@@ -7,11 +7,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
 import com.wmods.wppenhacer.xposed.core.Feature;
+import com.wmods.wppenhacer.xposed.core.WppCore;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XSharedPreferences;
@@ -25,6 +25,8 @@ public class MessageScheduler extends Feature {
 
     @Override
     public void doHook() throws Throwable {
+        if (!WppCore.getPrivBoolean("enable_scheduler", false)) return;
+
         XposedHelpers.findAndHookMethod(
             "android.app.Application",
             classLoader,
@@ -36,17 +38,20 @@ public class MessageScheduler extends Feature {
                     BroadcastReceiver receiver = new BroadcastReceiver() {
                         @Override
                         public void onReceive(Context ctx, Intent intent) {
-                            String jid = intent.getStringExtra("JID");
-                            String msg = intent.getStringExtra("MESSAGE");
-                            if (jid != null && msg != null) {
-                                try {
+                            try {
+                                String jid = intent.getStringExtra("JID");
+                                String msg = intent.getStringExtra("MESSAGE");
+                                if (jid != null && msg != null && !jid.isEmpty() && !msg.isEmpty()) {
+                                    if (!jid.contains("@")) {
+                                        jid = jid + "@s.whatsapp.net";
+                                    }
                                     Object messageHandler = XposedHelpers.callStaticMethod(
                                         XposedHelpers.findClass("com.whatsapp.MessageHandler", classLoader),
                                         "getInstance"
                                     );
                                     XposedHelpers.callMethod(messageHandler, "sendMessage", jid, msg);
-                                } catch (Exception ignored) {
                                 }
+                            } catch (Throwable ignored) {
                             }
                         }
                     };
@@ -55,45 +60,34 @@ public class MessageScheduler extends Feature {
             }
         );
 
-        Class<?> ConversationClass = XposedHelpers.findClassIfExists("com.whatsapp.Conversation", classLoader);
-        if (ConversationClass != null) {
+        Class<?> HomeClass = WppCore.getHomeActivityClass(classLoader);
+        if (HomeClass != null) {
             XposedHelpers.findAndHookMethod(
-                ConversationClass,
+                HomeClass,
                 "onCreateOptionsMenu",
                 Menu.class,
                 new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                        Menu menu = (Menu) param.args[0];
-                        Activity activity = (Activity) param.thisObject;
-                        
-                        MenuItem scheduleItem = menu.add(0, 0, 0, "Jadwalkan Pesan");
-                        scheduleItem.setOnMenuItemClickListener(item -> {
-                            String currentJid = "";
-                            try {
-                                currentJid = (String) XposedHelpers.getObjectField(param.thisObject, "contactJid");
-                            } catch (Exception ignored) {
-                            }
+                        try {
+                            Menu menu = (Menu) param.args[0];
+                            final Activity activity = (Activity) param.thisObject;
                             
-                            try {
-                                Intent intent1 = new Intent();
-                                intent1.setClassName("com.dev4mod.waenhancer", "com.wmods.wppenhacer.activities.SchedulerActivity");
-                                intent1.putExtra("JID", currentJid);
-                                intent1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                activity.startActivity(intent1);
-                            } catch (Exception e1) {
-                                try {
-                                    Intent intent2 = new Intent();
-                                    intent2.setClassName("com.wmods.wppenhacer", "com.wmods.wppenhacer.activities.SchedulerActivity");
-                                    intent2.putExtra("JID", currentJid);
-                                    intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    activity.startActivity(intent2);
-                                } catch (Exception e2) {
-                                    Toast.makeText(activity, "Error membuka jadwal: " + e2.getMessage(), Toast.LENGTH_LONG).show();
+                            MenuItem scheduleItem = menu.add(0, 0, 0, "Jadwal Pesan");
+                            scheduleItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                                @Override
+                                public boolean onMenuItemClick(MenuItem item) {
+                                    try {
+                                        Intent intent = new Intent("com.waenhancer.SCHEDULER");
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                        activity.startActivity(intent);
+                                    } catch (Throwable ignored) {
+                                    }
+                                    return true;
                                 }
-                            }
-                            return true;
-                        });
+                            });
+                        } catch (Throwable ignored) {
+                        }
                     }
                 }
             );

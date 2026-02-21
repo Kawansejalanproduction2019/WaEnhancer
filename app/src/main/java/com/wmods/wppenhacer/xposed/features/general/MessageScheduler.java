@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -74,10 +75,23 @@ public class MessageScheduler extends Feature {
                             } catch (Exception ignored) {
                             }
                             
-                            Intent intent = new Intent();
-                            intent.setClassName("com.wmods.wppenhacer", "com.wmods.wppenhacer.activities.SchedulerActivity");
-                            intent.putExtra("JID", currentJid);
-                            activity.startActivity(intent);
+                            try {
+                                Intent intent1 = new Intent();
+                                intent1.setClassName("com.dev4mod.waenhancer", "com.wmods.wppenhacer.activities.SchedulerActivity");
+                                intent1.putExtra("JID", currentJid);
+                                intent1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                activity.startActivity(intent1);
+                            } catch (Exception e1) {
+                                try {
+                                    Intent intent2 = new Intent();
+                                    intent2.setClassName("com.wmods.wppenhacer", "com.wmods.wppenhacer.activities.SchedulerActivity");
+                                    intent2.putExtra("JID", currentJid);
+                                    intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    activity.startActivity(intent2);
+                                } catch (Exception e2) {
+                                    Toast.makeText(activity, "Error membuka jadwal: " + e2.getMessage(), Toast.LENGTH_LONG).show();
+                                }
+                            }
                             return true;
                         });
                     }

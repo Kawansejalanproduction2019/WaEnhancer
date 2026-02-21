@@ -8,8 +8,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
+import android.widget.Button;
 import android.view.View;
+import android.graphics.Color;
 
 public class MessageScheduler {
     public static void init(final ClassLoader classLoader) {
@@ -53,21 +54,23 @@ public class MessageScheduler {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     Activity activity = (Activity) param.thisObject;
-                    ImageButton scheduleBtn = new ImageButton(activity);
+                    Button scheduleBtn = new Button(activity);
+                    scheduleBtn.setText("⏰");
+                    scheduleBtn.setBackgroundColor(Color.TRANSPARENT);
                     
                     ViewGroup layout = (ViewGroup) activity.findViewById(
                         activity.getResources().getIdentifier("input_layout", "id", "com.whatsapp")
                     );
                     
                     if (layout != null) {
-                        layout.addView(scheduleBtn);
+                        layout.addView(scheduleBtn, 0);
                         
                         scheduleBtn.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
                                 String currentJid = (String) XposedHelpers.getObjectField(param.thisObject, "contactJid");
                                 Intent intent = new Intent();
-                                intent.setClassName("com.dev4mod.waenhancer", "com.wmods.wppenhacer.activities.SchedulerActivity");
+                                intent.setClassName("com.wmods.wppenhacer", "com.wmods.wppenhacer.activities.SchedulerActivity");
                                 intent.putExtra("JID", currentJid);
                                 activity.startActivity(intent);
                             }

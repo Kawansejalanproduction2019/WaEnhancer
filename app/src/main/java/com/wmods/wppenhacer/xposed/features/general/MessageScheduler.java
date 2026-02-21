@@ -2,7 +2,6 @@ package com.wmods.wppenhacer.xposed.features.general;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
-import de.robv.android.xposed.callbacks.XC_LoadPackage;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.BroadcastReceiver;
@@ -13,11 +12,11 @@ import android.widget.ImageButton;
 import android.view.View;
 
 public class MessageScheduler {
-    public static void init(final XC_LoadPackage.LoadPackageParam lpparam) {
+    public static void init(final ClassLoader classLoader) {
         
         XposedHelpers.findAndHookMethod(
             "android.app.Application",
-            lpparam.classLoader,
+            classLoader,
             "onCreate",
             new XC_MethodHook() {
                 @Override
@@ -31,7 +30,7 @@ public class MessageScheduler {
                             if (jid != null && msg != null) {
                                 try {
                                     Object messageHandler = XposedHelpers.callStaticMethod(
-                                        XposedHelpers.findClass("com.whatsapp.MessageHandler", lpparam.classLoader),
+                                        XposedHelpers.findClass("com.whatsapp.MessageHandler", classLoader),
                                         "getInstance"
                                     );
                                     XposedHelpers.callMethod(messageHandler, "sendMessage", jid, msg);
@@ -47,7 +46,7 @@ public class MessageScheduler {
 
         XposedHelpers.findAndHookMethod(
             "com.whatsapp.Conversation",
-            lpparam.classLoader,
+            classLoader,
             "onCreate",
             android.os.Bundle.class,
             new XC_MethodHook() {

@@ -224,7 +224,6 @@ public class FeatureLoader {
         Utils.init(loader);
         AlertDialogWpp.initDialog(loader);
         WaContactWpp.initialize(loader);
-        MessageScheduler.init(loader);
         WppCore.addListenerActivity((activity, state) -> {
 
             if (state == WppCore.ActivityChangeState.ChangeType.RESUMED) {
@@ -308,6 +307,7 @@ public class FeatureLoader {
 
         var classes = new Class<?>[]{
                 DebugFeature.class,
+                MessageScheduler.class,
                 ContactItemListener.class,
                 ConversationItemListener.class,
                 MenuStatusListener.class,

@@ -10,6 +10,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TimePicker;
 import android.widget.Toast;
 import java.util.Calendar;
@@ -27,17 +28,18 @@ public class SchedulerActivity extends Activity {
         
         targetJid = getIntent().getStringExtra("JID");
         
-        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
-        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(40, 40, 40, 40);
         
         messageInput = new EditText(this);
-        messageInput.setHint("Tulis pesan yang akan dijadwalkan");
+        messageInput.setHint("Ketik pesan di sini");
         
         datePicker = new DatePicker(this);
         timePicker = new TimePicker(this);
         
         scheduleButton = new Button(this);
-        scheduleButton.setText("Jadwalkan Pesan Sekarang");
+        scheduleButton.setText("Simpan Jadwal");
         
         layout.addView(messageInput);
         layout.addView(datePicker);
@@ -75,7 +77,7 @@ public class SchedulerActivity extends Activity {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
         
-        Toast.makeText(this, "Pesan berhasil dijadwalkan!", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Pesan berhasil dijadwalkan", Toast.LENGTH_SHORT).show();
         finish();
     }
 }

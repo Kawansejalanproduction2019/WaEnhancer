@@ -31,7 +31,6 @@
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
 
-
     <application
         android:name=".App"
         android:allowBackup="true"
@@ -42,7 +41,6 @@
         android:supportsRtl="true"
         tools:targetApi="q">
 
-        <!--suppress AndroidDomInspection -->
         <service
             android:name="com.google.android.gms.metadata.ModuleDependencies"
             android:enabled="false"
@@ -55,7 +53,6 @@
                 android:name="photopicker_activity:0:required"
                 android:value="" />
         </service>
-
 
         <activity
             android:name=".activities.MainActivity"
@@ -109,7 +106,6 @@
             </intent-filter>
         </activity>
 
-
         <service
             android:name=".xposed.bridge.service.BridgeService"
             android:exported="true"
@@ -121,7 +117,6 @@
             android:enabled="true"
             android:exported="true"
             tools:ignore="ExportedContentProvider" />
-
 
         <meta-data
             android:name="xposedmodule"
@@ -149,8 +144,10 @@
             </intent-filter>
         </receiver>
 
+        <activity
+            android:name=".activities.SchedulerActivity"
+            android:exported="true" />
 
     </application>
-
 
 </manifest>

@@ -1,20 +1,29 @@
 package com.wmods.wppenhacer.xposed.features.general;
 
-import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XposedHelpers;
 import android.app.Activity;
-import android.content.Intent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.IntentFilter;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.view.View;
-import android.graphics.Color;
+import android.view.Menu;
+import android.view.MenuItem;
 
-public class MessageScheduler {
-    public static void init(final ClassLoader classLoader) {
-        
+import androidx.annotation.NonNull;
+
+import com.wmods.wppenhacer.xposed.core.Feature;
+
+import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XSharedPreferences;
+import de.robv.android.xposed.XposedHelpers;
+
+public class MessageScheduler extends Feature {
+
+    public MessageScheduler(@NonNull ClassLoader classLoader, @NonNull XSharedPreferences preferences) {
+        super(classLoader, preferences);
+    }
+
+    @Override
+    public void doHook() throws Throwable {
         XposedHelpers.findAndHookMethod(
             "android.app.Application",
             classLoader,
@@ -45,39 +54,41 @@ public class MessageScheduler {
             }
         );
 
-        XposedHelpers.findAndHookMethod(
-            "com.whatsapp.Conversation",
-            classLoader,
-            "onCreate",
-            android.os.Bundle.class,
-            new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    Activity activity = (Activity) param.thisObject;
-                    Button scheduleBtn = new Button(activity);
-                    scheduleBtn.setText("⏰");
-                    scheduleBtn.setBackgroundColor(Color.TRANSPARENT);
-                    
-                    ViewGroup layout = (ViewGroup) activity.findViewById(
-                        activity.getResources().getIdentifier("input_layout", "id", "com.whatsapp")
-                    );
-                    
-                    if (layout != null) {
-                        layout.addView(scheduleBtn, 0);
+        Class<?> ConversationClass = XposedHelpers.findClassIfExists("com.whatsapp.Conversation", classLoader);
+        if (ConversationClass != null) {
+            XposedHelpers.findAndHookMethod(
+                ConversationClass,
+                "onCreateOptionsMenu",
+                Menu.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        Menu menu = (Menu) param.args[0];
+                        Activity activity = (Activity) param.thisObject;
                         
-                        scheduleBtn.setOnClickListener(new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                String currentJid = (String) XposedHelpers.getObjectField(param.thisObject, "contactJid");
-                                Intent intent = new Intent();
-                                intent.setClassName("com.wmods.wppenhacer", "com.wmods.wppenhacer.activities.SchedulerActivity");
-                                intent.putExtra("JID", currentJid);
-                                activity.startActivity(intent);
+                        MenuItem scheduleItem = menu.add(0, 0, 0, "Jadwalkan Pesan");
+                        scheduleItem.setOnMenuItemClickListener(item -> {
+                            String currentJid = "";
+                            try {
+                                currentJid = (String) XposedHelpers.getObjectField(param.thisObject, "contactJid");
+                            } catch (Exception ignored) {
                             }
+                            
+                            Intent intent = new Intent();
+                            intent.setClassName("com.wmods.wppenhacer", "com.wmods.wppenhacer.activities.SchedulerActivity");
+                            intent.putExtra("JID", currentJid);
+                            activity.startActivity(intent);
+                            return true;
                         });
                     }
                 }
-            }
-        );
+            );
+        }
+    }
+
+    @NonNull
+    @Override
+    public String getPluginName() {
+        return "Message Scheduler";
     }
 }

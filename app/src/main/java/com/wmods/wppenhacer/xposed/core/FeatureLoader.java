@@ -87,6 +87,8 @@ import com.wmods.wppenhacer.xposed.utils.DesignUtils;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
+import com.wmods.wppenhacer.xposed.features.general.MessageScheduler;
+
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -222,6 +224,7 @@ public class FeatureLoader {
         Utils.init(loader);
         AlertDialogWpp.initDialog(loader);
         WaContactWpp.initialize(loader);
+        MessageScheduler.init(loader);
         WppCore.addListenerActivity((activity, state) -> {
 
             if (state == WppCore.ActivityChangeState.ChangeType.RESUMED) {

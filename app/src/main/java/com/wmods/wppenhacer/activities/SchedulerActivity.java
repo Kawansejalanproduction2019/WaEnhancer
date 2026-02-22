@@ -12,7 +12,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.text.format.DateFormat;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -23,27 +22,25 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.util.Calendar;
 
 public class SchedulerActivity extends Activity {
 
-    private LinearLayout containerList;
-    private static final int PICK_CONTACT = 1;
-    private EditText inputPhone;
+    private LinearLayout listContainer;
+    private static final int PICK_CONTACT = 101;
+    private EditText phoneInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        showScheduleList();
+        renderScheduleList();
     }
 
-    private void showScheduleList() {
+    private void renderScheduleList() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(Color.parseColor("#ECE5DD"));
+        scroll.setBackgroundColor(Color.parseColor("#F5F6F7"));
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -51,30 +48,26 @@ public class SchedulerActivity extends Activity {
         scroll.addView(root);
 
         TextView title = new TextView(this);
-        title.setText("Jadwal Pesan");
-        title.setTextSize(24);
+        title.setText("Penjadwal Pesan");
+        title.setTextSize(22);
         title.setTypeface(null, Typeface.BOLD);
-        title.setTextColor(Color.parseColor("#075E54"));
         title.setPadding(0, 0, 0, 40);
         root.addView(title);
 
-        Button btnAdd = new Button(this);
-        btnAdd.setText("+ Buat Jadwal Baru");
-        btnAdd.setBackground(getRect(Color.parseColor("#25D366"), 15));
-        btnAdd.setTextColor(Color.WHITE);
-        btnAdd.setOnClickListener(v -> showCreationView());
+        Button btnAdd = createBtn("BUAT JADWAL BARU", "#25D366");
+        btnAdd.setOnClickListener(v -> renderAddView());
         root.addView(btnAdd);
 
-        containerList = new LinearLayout(this);
-        containerList.setOrientation(LinearLayout.VERTICAL);
-        root.addView(containerList);
+        listContainer = new LinearLayout(this);
+        listContainer.setOrientation(LinearLayout.VERTICAL);
+        root.addView(listContainer);
 
-        loadData();
+        loadSavedData();
         setContentView(scroll);
     }
 
-    private void loadData() {
-        containerList.removeAllViews();
+    private void loadSavedData() {
+        listContainer.removeAllViews();
         try {
             android.content.SharedPreferences sp = getSharedPreferences("WaGlobal", MODE_PRIVATE);
             JSONArray arr = new JSONArray(sp.getString("scheduled_messages", "[]"));
@@ -85,68 +78,64 @@ public class SchedulerActivity extends Activity {
 
                 LinearLayout card = new LinearLayout(this);
                 card.setOrientation(LinearLayout.VERTICAL);
-                card.setPadding(30, 30, 30, 30);
-                card.setBackground(getRect(Color.WHITE, 20));
+                card.setPadding(35, 35, 35, 35);
+                card.setBackground(getShape(Color.WHITE, 20));
                 
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
                 lp.setMargins(0, 30, 0, 0);
                 card.setLayoutParams(lp);
 
-                TextView txt = new TextView(this);
-                txt.setText("Target: " + o.getString("jid") + "\nPesan: " + o.getString("msg") + "\nWaktu: " + o.getString("time"));
-                txt.setTextColor(Color.DKGRAY);
-                card.addView(txt);
+                TextView tv = new TextView(this);
+                tv.setText("Tujuan: " + o.getString("jid") + "\nPesan: " + o.getString("msg") + "\nWaktu: " + o.getString("time"));
+                card.addView(tv);
 
                 Button del = new Button(this);
-                del.setText("Hapus");
-                del.setBackground(null);
+                del.setText("HAPUS");
                 del.setTextColor(Color.RED);
+                del.setBackground(null);
                 del.setOnClickListener(v -> {
                     arr.remove(pos);
                     sp.edit().putString("scheduled_messages", arr.toString()).apply();
-                    loadData();
+                    loadSavedData();
                 });
                 card.addView(del);
-                containerList.addView(card);
+                listContainer.addView(card);
             }
         } catch (Exception ignored) {}
     }
 
-    private void showCreationView() {
+    private void renderAddView() {
         ScrollView scroll = new ScrollView(this);
-        LinearLayout lay = new LinearLayout(this);
-        lay.setOrientation(LinearLayout.VERTICAL);
-        lay.setPadding(40, 40, 40, 40);
-        scroll.addView(lay);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(40, 40, 40, 40);
+        scroll.addView(form);
 
-        Button pick = new Button(this);
-        pick.setText("Pilih dari Kontak WhatsApp");
+        Button pick = createBtn("PILIH KONTAK", "#34B7F1");
         pick.setOnClickListener(v -> {
-            Intent it = new Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI);
-            startActivityForResult(it, PICK_CONTACT);
+            startActivityForResult(new Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI), PICK_CONTACT);
         });
-        lay.addView(pick);
+        form.addView(pick);
 
-        inputPhone = new EditText(this);
-        inputPhone.setHint("Nomor (62...)");
-        lay.addView(inputPhone);
+        phoneInput = new EditText(this);
+        phoneInput.setHint("Nomor HP (62...)");
+        form.addView(phoneInput);
 
-        EditText inputMsg = new EditText(this);
-        inputMsg.setHint("Isi Pesan");
-        lay.addView(inputMsg);
+        EditText msgIn = new EditText(this);
+        msgIn.setHint("Isi Pesan");
+        form.addView(msgIn);
 
         DatePicker dp = new DatePicker(this);
-        lay.addView(dp);
+        form.addView(dp);
 
         TimePicker tp = new TimePicker(this);
-        tp.setIs24HourView(DateFormat.is24HourFormat(this));
-        lay.addView(tp);
+        tp.setIs24HourView(true);
+        form.addView(tp);
 
-        Button save = new Button(this);
-        save.setText("Simpan Jadwal");
+        Button save = createBtn("SIMPAN SEKARANG", "#128C7E");
         save.setOnClickListener(v -> {
-            String jid = inputPhone.getText().toString();
-            String msg = inputMsg.getText().toString();
+            String jid = phoneInput.getText().toString().replaceAll("[^0-9]", "");
+            String msg = msgIn.getText().toString();
             if (jid.isEmpty() || msg.isEmpty()) return;
 
             Calendar cal = Calendar.getInstance();
@@ -155,7 +144,7 @@ public class SchedulerActivity extends Activity {
             saveProcess(jid, msg, cal);
             finish();
         });
-        lay.addView(save);
+        form.addView(save);
         setContentView(scroll);
     }
 
@@ -181,14 +170,22 @@ public class SchedulerActivity extends Activity {
             AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
             am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
             
-            Toast.makeText(this, "Berhasil dijadwalkan!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Jadwal disimpan", Toast.LENGTH_SHORT).show();
         } catch (Exception ignored) {}
     }
 
-    private GradientDrawable getRect(int color, int radius) {
+    private Button createBtn(String t, String c) {
+        Button b = new Button(this);
+        b.setText(t);
+        b.setTextColor(Color.WHITE);
+        b.setBackground(getShape(Color.parseColor(c), 12));
+        return b;
+    }
+
+    private GradientDrawable getShape(int c, int r) {
         GradientDrawable gd = new GradientDrawable();
-        gd.setColor(color);
-        gd.setCornerRadius(radius);
+        gd.setColor(c);
+        gd.setCornerRadius(r);
         return gd;
     }
 
@@ -197,8 +194,8 @@ public class SchedulerActivity extends Activity {
         if (req == PICK_CONTACT && res == RESULT_OK) {
             Cursor c = getContentResolver().query(data.getData(), null, null, null, null);
             if (c != null && c.moveToFirst()) {
-                int i = c.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
-                inputPhone.setText(c.getString(i).replaceAll("[^0-9]", ""));
+                String num = c.getString(c.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)).replaceAll("[^0-9]", "");
+                phoneInput.setText(num);
                 c.close();
             }
         }

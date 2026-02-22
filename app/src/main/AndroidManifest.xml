@@ -157,7 +157,6 @@
             android:exported="false"
             android:launchMode="singleInstance"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
-            </intent-filter>
         </activity>
 
 

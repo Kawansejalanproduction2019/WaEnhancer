@@ -154,10 +154,9 @@
 
         <activity
             android:name=".activities.SchedulerActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.waenhancer.SCHEDULER" />
-                <category android:name="android.intent.category.DEFAULT" />
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
             </intent-filter>
         </activity>
 

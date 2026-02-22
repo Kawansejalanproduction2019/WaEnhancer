@@ -142,7 +142,7 @@
 
         <activity
             android:name=".activities.SchedulerActivity"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleInstance"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
             <intent-filter>

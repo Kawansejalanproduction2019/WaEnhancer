@@ -13,6 +13,7 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
@@ -32,6 +33,7 @@
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
+
 
     <application
         android:name=".App"
@@ -56,12 +58,14 @@
                 android:value="" />
         </service>
 
+
         <activity
             android:name=".activities.MainActivity"
             android:exported="true"
             android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
@@ -85,22 +89,28 @@
             android:excludeFromRecents="true"
             android:exported="true"
             android:theme="@android:style/Theme.NoDisplay">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
+
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data android:scheme="https" />
             </intent-filter>
         </activity>
+
 
         <service
             android:name=".xposed.bridge.service.BridgeService"
@@ -113,6 +123,7 @@
             android:enabled="true"
             android:exported="true"
             tools:ignore="ExportedContentProvider" />
+
 
         <meta-data
             android:name="xposedmodule"
@@ -136,7 +147,7 @@
             tools:ignore="ExportedReceiver">
             <intent-filter>
                 <action android:name="com.facebook.GET_PHONE_ID" />
-                <action android:name="android.support.customtabs.action.CustomTabsService" />
+                <action android:name="android.support.customtabs.action.CustomTabsService"/>
             </intent-filter>
         </receiver>
 
@@ -144,17 +155,10 @@
             android:name=".activities.SchedulerActivity"
             android:exported="true"
             android:launchMode="singleInstance"
-            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
-            <intent-filter>
-                <action android:name="com.waenhancer.SCHEDULER" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
 
-        <receiver
-            android:name=".receivers.AlarmReceiver"
-            android:exported="true" />
 
     </application>
+
 
 </manifest>

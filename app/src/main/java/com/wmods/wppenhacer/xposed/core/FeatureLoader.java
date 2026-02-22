@@ -89,6 +89,7 @@ import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 import com.wmods.wppenhacer.xposed.features.general.MessageScheduler;
 
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -290,10 +291,11 @@ public class FeatureLoader {
                     String jid = intent.getStringExtra("JID");
                     String msg = intent.getStringExtra("MESSAGE");
                     if (jid != null && msg != null) {
-                        String target = jid.contains("@") ? jid : jid + "@s.whatsapp.net";
-                        WppCore.sendMessage(target, msg);
+                        String cleanJid = jid.split("@")[0];
+                        WppCore.sendMessage(cleanJid, msg);
                     }
-                } catch (Throwable ignored) {}
+                } catch (Throwable ignored) {
+                }
             }
         };
         ContextCompat.registerReceiver(mApp, scheduleReceiver, new IntentFilter("com.wmods.wppenhacer.SEND_SCHEDULED"), ContextCompat.RECEIVER_EXPORTED);

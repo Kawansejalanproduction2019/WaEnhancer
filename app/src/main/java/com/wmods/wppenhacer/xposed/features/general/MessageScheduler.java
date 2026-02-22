@@ -1,42 +1,51 @@
 package com.wmods.wppenhacer.xposed.features.general;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
+
 import com.wmods.wppenhacer.xposed.core.Feature;
 import com.wmods.wppenhacer.xposed.core.WppCore;
+
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedHelpers;
 
 public class MessageScheduler extends Feature {
+
     public MessageScheduler(@NonNull ClassLoader classLoader, @NonNull XSharedPreferences preferences) {
         super(classLoader, preferences);
     }
 
     @Override
     public void doHook() throws Throwable {
-        XposedHelpers.findAndHookMethod("android.app.Application", classLoader, "onCreate", new XC_MethodHook() {
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                Context context = (Context) param.thisObject;
-                context.registerReceiver(new BroadcastReceiver() {
-                    @Override
-                    public void onReceive(Context ctx, Intent intent) {
+        Class<?> widgetClass = XposedHelpers.findClassIfExists("com.whatsapp.appwidget.WidgetProvider", classLoader);
+        if (widgetClass != null) {
+            XposedHelpers.findAndHookMethod(widgetClass, "onReceive", Context.class, Intent.class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    Intent intent = (Intent) param.args[1];
+                    if (intent != null && "com.wmods.wppenhacer.EXECUTE_SCHEDULE".equals(intent.getAction())) {
                         String jid = intent.getStringExtra("JID");
                         String msg = intent.getStringExtra("MESSAGE");
+                        
                         if (jid != null && msg != null) {
-                            WppCore.sendMessage(jid, msg);
+                            String cleanJid = jid.contains("@") ? jid.split("@")[0] : jid;
+                            WppCore.sendMessage(cleanJid, msg);
                         }
+                        
+                        // Membatalkan eksekusi Widget asli agar WhatsApp tidak error
+                        param.setResult(null); 
                     }
-                }, new IntentFilter("com.wmods.wppenhacer.SEND_SCHEDULED"));
-            }
-        });
+                }
+            });
+        }
     }
 
-    @NonNull
     @Override
-    public String getPluginName() { return "Message Scheduler"; }
+    public String getPluginName() {
+        return "Message Scheduler";
+    }
 }

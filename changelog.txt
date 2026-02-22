@@ -1,6 +1,7 @@
 [ADDED]
 * Added Monet colors and some others for WAE
 * Added Monet colors for WhatsApp
+* beta schedule message 
 
 [Fixed]
 * Fixed compatibility with version 3.26.6.XX

@@ -43,6 +43,7 @@ import com.wmods.wppenhacer.xposed.features.general.CallType;
 import com.wmods.wppenhacer.xposed.features.general.ChatLimit;
 import com.wmods.wppenhacer.xposed.features.general.DeleteStatus;
 import com.wmods.wppenhacer.xposed.features.general.LiteMode;
+import com.wmods.wppenhacer.xposed.features.general.MessageScheduler;
 import com.wmods.wppenhacer.xposed.features.general.NewChat;
 import com.wmods.wppenhacer.xposed.features.general.Others;
 import com.wmods.wppenhacer.xposed.features.general.PinnedLimit;
@@ -87,7 +88,6 @@ import com.wmods.wppenhacer.xposed.utils.DesignUtils;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
-import com.wmods.wppenhacer.xposed.features.general.MessageScheduler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -281,23 +281,6 @@ public class FeatureLoader {
             }
         };
         ContextCompat.registerReceiver(mApp, restartManualReceiver, new IntentFilter(BuildConfig.APPLICATION_ID + ".MANUAL_RESTART"), ContextCompat.RECEIVER_EXPORTED);
-
-        BroadcastReceiver scheduleReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                try {
-                    String jid = intent.getStringExtra("JID");
-                    String msg = intent.getStringExtra("MESSAGE");
-                    if (jid != null && msg != null) {
-                        Toast.makeText(context, "WA Mengeksekusi Pesan...", Toast.LENGTH_SHORT).show();
-                        String cleanJid = jid.contains("@") ? jid.split("@")[0] : jid;
-                        WppCore.sendMessage(cleanJid, msg);
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        };
-        ContextCompat.registerReceiver(mApp, scheduleReceiver, new IntentFilter("com.wmods.wppenhacer.EXECUTE_SCHEDULE"), ContextCompat.RECEIVER_EXPORTED);
     }
 
     private static void sendEnabledBroadcast(Context context) {

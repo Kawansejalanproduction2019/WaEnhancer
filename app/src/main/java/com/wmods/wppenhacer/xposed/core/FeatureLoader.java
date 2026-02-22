@@ -291,15 +291,15 @@ public class FeatureLoader {
                     String jid = intent.getStringExtra("JID");
                     String msg = intent.getStringExtra("MESSAGE");
                     if (jid != null && msg != null) {
-                        String cleanJid = jid.split("@")[0];
+                        String cleanJid = jid.contains("@") ? jid.split("@")[0] : jid;
                         WppCore.sendMessage(cleanJid, msg);
                     }
                 } catch (Throwable ignored) {
                 }
             }
         };
-        ContextCompat.registerReceiver(mApp, scheduleReceiver, new IntentFilter("com.wmods.wppenhacer.SEND_SCHEDULED"), ContextCompat.RECEIVER_EXPORTED);
-    }
+        ContextCompat.registerReceiver(mApp, scheduleReceiver, new IntentFilter("com.wmods.wppenhacer.EXECUTE_SCHEDULE"), ContextCompat.RECEIVER_EXPORTED);
+
 
     private static void sendEnabledBroadcast(Context context) {
         try {

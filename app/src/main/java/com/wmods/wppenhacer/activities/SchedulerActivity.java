@@ -11,7 +11,6 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.text.format.DateFormat;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -181,13 +180,10 @@ public class SchedulerActivity extends Activity {
             PendingIntent pi = PendingIntent.getBroadcast(this, id, it, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
 
-            try {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
-            } catch (SecurityException e) {
-                am.set(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
-            }
+            AlarmManager.AlarmClockInfo alarmClockInfo = new AlarmManager.AlarmClockInfo(cal.getTimeInMillis(), pi);
+            am.setAlarmClock(alarmClockInfo, pi);
 
-            Toast.makeText(this, "Jadwal berhasil dikunci", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Jadwal terkunci sistem", Toast.LENGTH_SHORT).show();
         } catch (Exception ignored) {}
     }
 

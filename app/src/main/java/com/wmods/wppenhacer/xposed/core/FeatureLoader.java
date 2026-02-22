@@ -89,7 +89,6 @@ import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 import com.wmods.wppenhacer.xposed.features.general.MessageScheduler;
 
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -299,7 +298,7 @@ public class FeatureLoader {
             }
         };
         ContextCompat.registerReceiver(mApp, scheduleReceiver, new IntentFilter("com.wmods.wppenhacer.EXECUTE_SCHEDULE"), ContextCompat.RECEIVER_EXPORTED);
-
+    }
 
     private static void sendEnabledBroadcast(Context context) {
         try {

@@ -139,14 +139,10 @@
                 <action android:name="android.support.customtabs.action.CustomTabsService" />
             </intent-filter>
         </receiver>
-        <receiver 
-            android:name=".receivers.AlarmReceiver" 
-            android:exported="false" />
-        </receiver>
 
         <activity
             android:name=".activities.SchedulerActivity"
-            android:exported="true"
+            android:exported="false"
             android:launchMode="singleInstance"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
             <intent-filter>
@@ -154,6 +150,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".receivers.AlarmReceiver"
+            android:exported="false" />
 
     </application>
 

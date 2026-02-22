@@ -71,21 +71,17 @@ public class WppCore {
 
     public static void Initialize(ClassLoader loader, XSharedPreferences pref) throws Exception {
         privPrefs = Utils.getApplication().getSharedPreferences("WaGlobal", Context.MODE_PRIVATE);
-        // init UserJID
         var mSendReadClass = Unobfuscator.findFirstClassUsingName(loader, StringMatchType.EndsWith, "SendReadReceiptJob");
         var subClass = ReflectionUtils.findConstructorUsingFilter(mSendReadClass, (constructor) -> constructor.getParameterCount() == 8).getParameterTypes()[0];
         mGenJidClass = ReflectionUtils.findFieldUsingFilter(subClass, (field) -> Modifier.isStatic(field.getModifiers())).getType();
         mGenJidMethod = ReflectionUtils.findMethodUsingFilter(mGenJidClass, (method) -> method.getParameterCount() == 1 && !Modifier.isStatic(method.getModifiers()));
-        // Bottom Dialog
         bottomDialog = Unobfuscator.loadDialogViewClass(loader);
 
         convChatField = Unobfuscator.loadAntiRevokeConvChatField(loader);
         chatJidField = Unobfuscator.loadAntiRevokeChatJidField(loader);
 
-        // Settings notifications activity (required for ActivityController.EXPORTED_ACTIVITY)
         mSettingsNotificationsClass = getSettingsNotificationsActivityClass(loader);
 
-        // StartUpPrefs
         var startPrefsConfig = Unobfuscator.loadStartPrefsConfig(loader);
         XposedBridge.hookMethod(startPrefsConfig, new XC_MethodHook() {
             @Override
@@ -94,9 +90,7 @@ public class WppCore {
             }
         });
 
-        // ActionUser
         actionUser = Unobfuscator.loadActionUser(loader);
-        XposedBridge.log("ActionUser: " + actionUser.getName());
         XposedBridge.hookAllConstructors(actionUser, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
@@ -104,7 +98,6 @@ public class WppCore {
             }
         });
 
-        // CachedMessageStore
         cachedMessageStoreKey = Unobfuscator.loadCachedMessageStoreKey(loader);
         XposedBridge.hookAllConstructors(cachedMessageStoreKey.getDeclaringClass(), new XC_MethodHook() {
             @Override
@@ -113,7 +106,6 @@ public class WppCore {
             }
         });
 
-        // WaJidMap
         convertLidToJid = Unobfuscator.loadConvertLidToJid(loader);
         convertJidToLid = Unobfuscator.loadConvertJidToLid(loader);
         XposedBridge.hookAllConstructors(convertLidToJid.getDeclaringClass(), new XC_MethodHook() {
@@ -123,7 +115,6 @@ public class WppCore {
             }
         });
 
-        // Load wa database
         loadWADatabase();
 
         if (!pref.getBoolean("lite_mode", false)) {
@@ -164,7 +155,7 @@ public class WppCore {
 
     public static void initBridge(Context context) throws Exception {
         var prefsCacheHooks = UnobfuscatorCache.getInstance().sPrefsCacheHooks;
-        int preferredOrder = prefsCacheHooks.getInt("preferredOrder", 1); // 0 for ProviderClient first, 1 for BridgeClient first
+        int preferredOrder = prefsCacheHooks.getInt("preferredOrder", 1); 
 
         boolean connected = false;
         if (preferredOrder == 0) {
@@ -172,14 +163,14 @@ public class WppCore {
                 connected = true;
             } else if (tryConnectBridge(new BridgeClient(context))) {
                 connected = true;
-                preferredOrder = 1; // Update preference to BridgeClient first
+                preferredOrder = 1; 
             }
         } else {
             if (tryConnectBridge(new BridgeClient(context))) {
                 connected = true;
             } else if (tryConnectBridge(new ProviderClient(context))) {
                 connected = true;
-                preferredOrder = 0; // Update preference to ProviderClient first
+                preferredOrder = 0; 
             }
         }
 
@@ -187,7 +178,6 @@ public class WppCore {
             throw new Exception(context.getString(ResId.string.bridge_error));
         }
 
-        // Update the preferred order if it changed
         prefsCacheHooks.edit().putInt("preferredOrder", preferredOrder).apply();
     }
 
@@ -209,11 +199,10 @@ public class WppCore {
         try {
             var senderMethod = ReflectionUtils.findMethodUsingFilterIfExists(actionUser, (method) -> List.class.isAssignableFrom(method.getReturnType()) && ReflectionUtils.findIndexOfType(method.getParameterTypes(), String.class) != -1);
             if (senderMethod != null) {
-                var userJid = createUserJid(number + "@s.whatsapp.net");
-                if (userJid == null) {
-                    Utils.showToast("UserJID not found", Toast.LENGTH_SHORT);
-                    return;
-                }
+                String cleanNum = number.contains("@") ? number.split("@")[0] : number;
+                var userJid = createUserJid(cleanNum + "@s.whatsapp.net");
+                if (userJid == null) return;
+                
                 var newObject = new Object[senderMethod.getParameterCount()];
                 for (int i = 0; i < newObject.length; i++) {
                     var param = senderMethod.getParameterTypes()[i];
@@ -224,10 +213,8 @@ public class WppCore {
                 var index2 = ReflectionUtils.findIndexOfType(senderMethod.getParameterTypes(), List.class);
                 newObject[index2] = Collections.singletonList(userJid);
                 senderMethod.invoke(getActionUser(), newObject);
-                Utils.showToast("Message sent to " + number, Toast.LENGTH_SHORT);
             }
         } catch (Exception e) {
-            Utils.showToast("Error in sending message:" + e.getMessage(), Toast.LENGTH_SHORT);
             XposedBridge.log(e);
         }
     }
@@ -237,7 +224,6 @@ public class WppCore {
             var senderMethod = ReflectionUtils.findMethodUsingFilter(actionUser, (method) -> method.getParameterCount() == 3 && Arrays.equals(method.getParameterTypes(), new Class[]{FMessageWpp.TYPE, String.class, boolean.class}));
             senderMethod.invoke(getActionUser(), objMessage, s, !TextUtils.isEmpty(s));
         } catch (Exception e) {
-            Utils.showToast("Error in sending reaction:" + e.getMessage(), Toast.LENGTH_SHORT);
             XposedBridge.log(e);
         }
     }
@@ -349,7 +335,7 @@ public class WppCore {
         var classes = new String[]{
                 "com.whatsapp.status.composer.TextStatusComposerFragment",
                 "com.whatsapp.statuscomposer.composer.TextStatusComposerFragment"
-        };
+            };
         Class<?> result = null;
         for (var clazz : classes) {
             if ((result = XposedHelpers.findClassIfExists(clazz, loader)) != null)
@@ -362,7 +348,7 @@ public class WppCore {
         var classes = new String[]{
                 "com.whatsapp.voipcalling.Voip",
                 "com.whatsapp.calling.voipcalling.Voip"
-        };
+            };
         Class<?> result = null;
         for (var clazz : classes) {
             if ((result = XposedHelpers.findClassIfExists(clazz, loader)) != null)
@@ -375,7 +361,7 @@ public class WppCore {
         var classes = new String[]{
                 "com.whatsapp.voipcalling.CallInfo",
                 "com.whatsapp.calling.infra.voipcalling.CallInfo"
-        };
+            };
         Class<?> result = null;
         for (var clazz : classes) {
             if ((result = XposedHelpers.findClassIfExists(clazz, loader)) != null)
@@ -383,15 +369,6 @@ public class WppCore {
         }
         throw new Exception("VoipCallInfoClass not found");
     }
-
-//    public static Activity getActivityBySimpleName(String name) {
-//        for (var activity : activities) {
-//            if (activity.getClass().getSimpleName().equals(name)) {
-//                return activity;
-//            }
-//        }
-//        return null;
-//    }
 
 
     public static int getDefaultTheme() {
@@ -453,7 +430,6 @@ public class WppCore {
         if (messageKey == null) return null;
         try {
             if (mCachedMessageStore == null) {
-                XposedBridge.log("CachedMessageStore is null");
                 return null;
             }
             return cachedMessageStoreKey.invoke(mCachedMessageStore, messageKey);
@@ -483,7 +459,6 @@ public class WppCore {
             if (conversation == null) return null;
             Object chatField;
             if (conversation.getClass().getSimpleName().equals("HomeActivity")) {
-                // tablet mode found
                 var convFragmentMethod = Unobfuscator.loadHomeConversationFragmentMethod(conversation.getClassLoader());
                 var convFragment = convFragmentMethod.invoke(null, conversation);
                 var convField = Unobfuscator.loadAntiRevokeConvFragmentField(conversation.getClassLoader());
@@ -536,10 +511,6 @@ public class WppCore {
         return startup_prefs.getString("push_name", "WhatsApp");
     }
 
-//    public static String getMyNumber() {
-//        var mainPrefs = getMainPrefs();
-//        return mainPrefs.getString("registration_jid", "");
-//    }
 
     public static SharedPreferences getMainPrefs() {
         return Utils.getApplication().getSharedPreferences(Utils.getApplication().getPackageName() + "_preferences_light", Context.MODE_PRIVATE);
@@ -568,8 +539,6 @@ public class WppCore {
         Class<?> conversation = XposedHelpers.findClass("com.whatsapp.Conversation", mCurrentActivity.getClassLoader());
         if (conversation.isInstance(mCurrentActivity)) return mCurrentActivity;
 
-        // for tablet UI, they're using HomeActivity instead of Conversation
-        // TODO: Add more checks for ConversationFragment
         Class<?> home = getHomeActivityClass(mCurrentActivity.getClassLoader());
         if (mCurrentActivity.getResources().getConfiguration().smallestScreenWidthDp >= 600 && home.isInstance(mCurrentActivity))
             return mCurrentActivity;

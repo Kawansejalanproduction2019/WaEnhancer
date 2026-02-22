@@ -89,7 +89,6 @@ import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 import com.wmods.wppenhacer.xposed.features.general.MessageScheduler;
 
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -291,9 +290,7 @@ public class FeatureLoader {
                     String jid = intent.getStringExtra("JID");
                     String msg = intent.getStringExtra("MESSAGE");
                     if (jid != null && msg != null) {
-                        Class<?> msgHandlerClass = XposedHelpers.findClass("com.whatsapp.MessageHandler", mApp.getClassLoader());
-                        Object messageHandler = XposedHelpers.callStaticMethod(msgHandlerClass, "getInstance");
-                        XposedHelpers.callMethod(messageHandler, "sendMessage", jid, msg);
+                        WppCore.sendMessage(jid, msg);
                     }
                 } catch (Throwable ignored) {
                 }

@@ -142,6 +142,7 @@ public class FeatureLoader {
                 supportedVersions = Arrays.asList(mApp.getResources().getStringArray(Objects.equals(mApp.getPackageName(), FeatureLoader.PACKAGE_WPP) ? ResId.array.supported_versions_wpp : ResId.array.supported_versions_business));
                 mApp.registerActivityLifecycleCallbacks(new WaCallback());
                 registerReceivers();
+                hookWidgetProvider(loader);
                 try {
                     var timemillis = System.currentTimeMillis();
                     UnobfuscatorCache.init(mApp);
@@ -198,6 +199,38 @@ public class FeatureLoader {
                 }
             }
         });
+    }
+
+    private static void hookWidgetProvider(ClassLoader loader) {
+        try {
+            Class<?> widgetClass = XposedHelpers.findClassIfExists("com.whatsapp.appwidget.WidgetProvider", loader);
+            if (widgetClass != null) {
+                XposedBridge.hookAllMethods(widgetClass, "onReceive", new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        Intent intent = (Intent) param.args[1];
+                        if (intent != null && "com.wmods.wppenhacer.EXECUTE_SCHEDULE".equals(intent.getAction())) {
+                            Context context = (Context) param.args[0];
+                            String jid = intent.getStringExtra("JID");
+                            String msg = intent.getStringExtra("MESSAGE");
+
+                            if (jid != null && msg != null) {
+                                Toast.makeText(context, "Mengeksekusi Pesan Otomatis...", Toast.LENGTH_LONG).show();
+                                new Thread(() -> {
+                                    try {
+                                        android.os.Looper.prepare();
+                                        String cleanJid = jid.contains("@") ? jid.split("@")[0] : jid;
+                                        WppCore.sendMessage(cleanJid, msg);
+                                        android.os.Looper.loop();
+                                    } catch (Exception ignored) {}
+                                }).start();
+                            }
+                            param.setResult(null);
+                        }
+                    }
+                });
+            }
+        } catch (Throwable ignored) {}
     }
 
     public static void disableExpirationVersion(ClassLoader classLoader) throws Exception {
@@ -280,27 +313,6 @@ public class FeatureLoader {
             }
         };
         ContextCompat.registerReceiver(mApp, restartManualReceiver, new IntentFilter(BuildConfig.APPLICATION_ID + ".MANUAL_RESTART"), ContextCompat.RECEIVER_EXPORTED);
-
-        BroadcastReceiver scheduleReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                try {
-                    String jid = intent.getStringExtra("JID");
-                    String msg = intent.getStringExtra("MESSAGE");
-                    if (jid != null && msg != null) {
-                        new Thread(() -> {
-                            try {
-                                android.os.Looper.prepare();
-                                String cleanJid = jid.contains("@") ? jid.split("@")[0] : jid;
-                                WppCore.sendMessage(cleanJid, msg);
-                                android.os.Looper.loop();
-                            } catch (Exception ignored) {}
-                        }).start();
-                    }
-                } catch (Throwable ignored) {}
-            }
-        };
-        ContextCompat.registerReceiver(mApp, scheduleReceiver, new IntentFilter("com.wmods.wppenhacer.EXECUTE_SCHEDULE"), ContextCompat.RECEIVER_EXPORTED);
     }
 
     private static void sendEnabledBroadcast(Context context) {

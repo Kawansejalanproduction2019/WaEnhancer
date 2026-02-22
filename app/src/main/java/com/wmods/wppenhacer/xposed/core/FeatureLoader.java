@@ -235,7 +235,6 @@ public class FeatureLoader {
         });
     }
 
-
     private static void checkUpdate(@NonNull Activity activity) {
         if (WppCore.getPrivBoolean("need_restart", false)) {
             WppCore.setPrivBoolean("need_restart", false);
@@ -290,6 +289,7 @@ public class FeatureLoader {
                     String jid = intent.getStringExtra("JID");
                     String msg = intent.getStringExtra("MESSAGE");
                     if (jid != null && msg != null) {
+                        Toast.makeText(context, "WA Mengeksekusi Pesan...", Toast.LENGTH_SHORT).show();
                         String cleanJid = jid.contains("@") ? jid.split("@")[0] : jid;
                         WppCore.sendMessage(cleanJid, msg);
                     }

@@ -43,7 +43,6 @@ import com.wmods.wppenhacer.xposed.features.general.CallType;
 import com.wmods.wppenhacer.xposed.features.general.ChatLimit;
 import com.wmods.wppenhacer.xposed.features.general.DeleteStatus;
 import com.wmods.wppenhacer.xposed.features.general.LiteMode;
-import com.wmods.wppenhacer.xposed.features.general.MessageScheduler;
 import com.wmods.wppenhacer.xposed.features.general.NewChat;
 import com.wmods.wppenhacer.xposed.features.general.Others;
 import com.wmods.wppenhacer.xposed.features.general.PinnedLimit;
@@ -289,7 +288,6 @@ public class FeatureLoader {
                     String jid = intent.getStringExtra("JID");
                     String msg = intent.getStringExtra("MESSAGE");
                     if (jid != null && msg != null) {
-                        Toast.makeText(context, "Mengeksekusi Jadwal...", Toast.LENGTH_LONG).show();
                         new Thread(() -> {
                             try {
                                 android.os.Looper.prepare();
@@ -320,7 +318,6 @@ public class FeatureLoader {
 
         var classes = new Class<?>[]{
                 DebugFeature.class,
-                MessageScheduler.class,
                 ContactItemListener.class,
                 ConversationItemListener.class,
                 MenuStatusListener.class,

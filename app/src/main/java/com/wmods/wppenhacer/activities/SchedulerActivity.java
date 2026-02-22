@@ -9,7 +9,6 @@ import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.view.View;
@@ -22,8 +21,10 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.util.Calendar;
 
 public class SchedulerActivity extends Activity {
@@ -80,13 +81,14 @@ public class SchedulerActivity extends Activity {
                 card.setOrientation(LinearLayout.VERTICAL);
                 card.setPadding(35, 35, 35, 35);
                 card.setBackground(getShape(Color.WHITE, 20));
-                
+
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
                 lp.setMargins(0, 30, 0, 0);
                 card.setLayoutParams(lp);
 
                 TextView tv = new TextView(this);
                 tv.setText("Tujuan: " + o.getString("jid") + "\nPesan: " + o.getString("msg") + "\nWaktu: " + o.getString("time"));
+                tv.setTextColor(Color.parseColor("#455A64"));
                 card.addView(tv);
 
                 Button del = new Button(this);
@@ -94,9 +96,18 @@ public class SchedulerActivity extends Activity {
                 del.setTextColor(Color.RED);
                 del.setBackground(null);
                 del.setOnClickListener(v -> {
-                    arr.remove(pos);
-                    sp.edit().putString("scheduled_messages", arr.toString()).apply();
-                    loadSavedData();
+                    try {
+                        int alarmId = o.getInt("id");
+                        arr.remove(pos);
+                        sp.edit().putString("scheduled_messages", arr.toString()).apply();
+
+                        Intent it = new Intent(SchedulerActivity.this, com.wmods.wppenhacer.receivers.AlarmReceiver.class);
+                        PendingIntent pi = PendingIntent.getBroadcast(SchedulerActivity.this, alarmId, it, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+                        am.cancel(pi);
+
+                        loadSavedData();
+                    } catch (Exception ignored) {}
                 });
                 card.addView(del);
                 listContainer.addView(card);
@@ -153,7 +164,7 @@ public class SchedulerActivity extends Activity {
             int id = (int) System.currentTimeMillis();
             android.content.SharedPreferences sp = getSharedPreferences("WaGlobal", MODE_PRIVATE);
             JSONArray arr = new JSONArray(sp.getString("scheduled_messages", "[]"));
-            
+
             JSONObject n = new JSONObject();
             n.put("id", id);
             n.put("jid", jid);
@@ -162,14 +173,14 @@ public class SchedulerActivity extends Activity {
             arr.put(n);
             sp.edit().putString("scheduled_messages", arr.toString()).apply();
 
-            Intent it = new Intent("com.wmods.wppenhacer.SEND_SCHEDULED");
+            Intent it = new Intent(this, com.wmods.wppenhacer.receivers.AlarmReceiver.class);
             it.putExtra("JID", jid);
             it.putExtra("MESSAGE", msg);
-            
-            PendingIntent pi = PendingIntent.getBroadcast(this, id, it, PendingIntent.FLAG_IMMUTABLE);
+
+            PendingIntent pi = PendingIntent.getBroadcast(this, id, it, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
             am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
-            
+
             Toast.makeText(this, "Jadwal disimpan", Toast.LENGTH_SHORT).show();
         } catch (Exception ignored) {}
     }

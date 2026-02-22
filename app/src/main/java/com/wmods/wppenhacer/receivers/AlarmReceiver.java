@@ -3,6 +3,7 @@ package com.wmods.wppenhacer.receivers;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.widget.Toast;
 
 public class AlarmReceiver extends BroadcastReceiver {
     @Override
@@ -12,19 +13,13 @@ public class AlarmReceiver extends BroadcastReceiver {
             String msg = intent.getStringExtra("MESSAGE");
 
             if (jid != null && msg != null) {
-                Intent waIntent = new Intent("com.wmods.wppenhacer.EXECUTE_SCHEDULE");
-                waIntent.setPackage("com.whatsapp");
-                waIntent.putExtra("JID", jid);
-                waIntent.putExtra("MESSAGE", msg);
-                waIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-                context.sendBroadcast(waIntent);
-
-                Intent wbIntent = new Intent("com.wmods.wppenhacer.EXECUTE_SCHEDULE");
-                wbIntent.setPackage("com.whatsapp.w4b");
-                wbIntent.putExtra("JID", jid);
-                wbIntent.putExtra("MESSAGE", msg);
-                wbIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-                context.sendBroadcast(wbIntent);
+                Toast.makeText(context, "Sinyal Jadwal Terpicu!", Toast.LENGTH_SHORT).show();
+                
+                Intent broadcast = new Intent("com.wmods.wppenhacer.EXECUTE_SCHEDULE");
+                broadcast.putExtra("JID", jid);
+                broadcast.putExtra("MESSAGE", msg);
+                broadcast.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+                context.sendBroadcast(broadcast);
             }
         } catch (Exception ignored) {}
     }

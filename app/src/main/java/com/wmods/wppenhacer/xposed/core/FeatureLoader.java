@@ -43,6 +43,7 @@ import com.wmods.wppenhacer.xposed.features.general.CallType;
 import com.wmods.wppenhacer.xposed.features.general.ChatLimit;
 import com.wmods.wppenhacer.xposed.features.general.DeleteStatus;
 import com.wmods.wppenhacer.xposed.features.general.LiteMode;
+import com.wmods.wppenhacer.xposed.features.general.MessageScheduler;
 import com.wmods.wppenhacer.xposed.features.general.NewChat;
 import com.wmods.wppenhacer.xposed.features.general.Others;
 import com.wmods.wppenhacer.xposed.features.general.PinnedLimit;
@@ -87,7 +88,6 @@ import com.wmods.wppenhacer.xposed.utils.DesignUtils;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
-import com.wmods.wppenhacer.xposed.features.general.MessageScheduler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -130,7 +130,6 @@ public class FeatureLoader {
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 mApp = (Application) param.args[0];
 
-                /* Inject Booloader Spoofer */
                 if (pref.getBoolean("bootloader_spoofer", false)) {
                     HookBL.hook(loader, pref);
                     XposedBridge.log("Bootloader Spoofer is Injected");
@@ -163,7 +162,6 @@ public class FeatureLoader {
                     initComponents(loader, pref);
                     plugins(loader, pref, packageInfo.versionName);
                     sendEnabledBroadcast(mApp);
-                    /* XposedHelpers.setStaticIntField(XposedHelpers.findClass("com.whatsapp.infra.logging.Log", loader), "level", 5); */
                     var timemillis2 = System.currentTimeMillis() - timemillis;
                     XposedBridge.log("Loaded Hooks in " + timemillis2 + "ms");
                 } catch (Throwable e) {
@@ -229,17 +227,13 @@ public class FeatureLoader {
                 checkUpdate(activity);
             }
 
-            /* Check for WAE Update */
-            @SuppressWarnings("ConstantValue")
-            boolean isOriginal = App.isOriginalPackage();
-            if (isOriginal && pref.getBoolean("update_check", true)) {
+            if (App.isOriginalPackage() && pref.getBoolean("update_check", true)) {
                 if (activity.getClass().getSimpleName().equals("HomeActivity") && state == WppCore.ActivityChangeState.ChangeType.CREATED) {
                     CompletableFuture.runAsync(new UpdateChecker(activity));
                 }
             }
         });
     }
-
 
     private static void checkUpdate(@NonNull Activity activity) {
         if (WppCore.getPrivBoolean("need_restart", false)) {
@@ -259,7 +253,6 @@ public class FeatureLoader {
     }
 
     private static void registerReceivers() {
-        /* Reboot receiver */
         BroadcastReceiver restartReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -273,7 +266,6 @@ public class FeatureLoader {
         };
         ContextCompat.registerReceiver(mApp, restartReceiver, new IntentFilter(BuildConfig.APPLICATION_ID + ".WHATSAPP.RESTART"), ContextCompat.RECEIVER_EXPORTED);
 
-        /* Wpp receiver */
         BroadcastReceiver wppReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -282,7 +274,6 @@ public class FeatureLoader {
         };
         ContextCompat.registerReceiver(mApp, wppReceiver, new IntentFilter(BuildConfig.APPLICATION_ID + ".CHECK_WPP"), ContextCompat.RECEIVER_EXPORTED);
 
-        /* Dialog receiver restart */
         BroadcastReceiver restartManualReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -298,15 +289,17 @@ public class FeatureLoader {
                     String jid = intent.getStringExtra("JID");
                     String msg = intent.getStringExtra("MESSAGE");
                     if (jid != null && msg != null) {
+                        Toast.makeText(context, "Mengeksekusi Jadwal...", Toast.LENGTH_LONG).show();
                         new Thread(() -> {
                             try {
+                                android.os.Looper.prepare();
                                 String cleanJid = jid.contains("@") ? jid.split("@")[0] : jid;
                                 WppCore.sendMessage(cleanJid, msg);
+                                android.os.Looper.loop();
                             } catch (Exception ignored) {}
                         }).start();
                     }
-                } catch (Throwable ignored) {
-                }
+                } catch (Throwable ignored) {}
             }
         };
         ContextCompat.registerReceiver(mApp, scheduleReceiver, new IntentFilter("com.wmods.wppenhacer.EXECUTE_SCHEDULE"), ContextCompat.RECEIVER_EXPORTED);

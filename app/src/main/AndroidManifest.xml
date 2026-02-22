@@ -139,6 +139,10 @@
                 <action android:name="android.support.customtabs.action.CustomTabsService" />
             </intent-filter>
         </receiver>
+        <receiver 
+            android:name=".receivers.AlarmReceiver" 
+            android:exported="false" />
+        </receiver>
 
         <activity
             android:name=".activities.SchedulerActivity"

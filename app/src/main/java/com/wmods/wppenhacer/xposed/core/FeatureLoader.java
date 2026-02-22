@@ -290,10 +290,10 @@ public class FeatureLoader {
                     String jid = intent.getStringExtra("JID");
                     String msg = intent.getStringExtra("MESSAGE");
                     if (jid != null && msg != null) {
-                        WppCore.sendMessage(jid, msg);
+                        String target = jid.contains("@") ? jid : jid + "@s.whatsapp.net";
+                        WppCore.sendMessage(target, msg);
                     }
-                } catch (Throwable ignored) {
-                }
+                } catch (Throwable ignored) {}
             }
         };
         ContextCompat.registerReceiver(mApp, scheduleReceiver, new IntentFilter("com.wmods.wppenhacer.SEND_SCHEDULED"), ContextCompat.RECEIVER_EXPORTED);

@@ -150,7 +150,32 @@ public class SchedulerActivity extends Activity {
         tp.setIs24HourView(true);
         form.addView(tp);
 
-        Button save = createBtn("SIMPAN SEKARANG", "#128C7E");
+        Button testBtn = createBtn("TEST KIRIM LANGSUNG", "#FF9800");
+        testBtn.setOnClickListener(v -> {
+            String jid = phoneInput.getText().toString().replaceAll("[^0-9]", "");
+            String msg = msgIn.getText().toString();
+            if (jid.isEmpty() || msg.isEmpty()) {
+                Toast.makeText(this, "Isi nomor dan pesan!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Intent testWa = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
+            testWa.setPackage("com.whatsapp");
+            testWa.putExtra("number", jid);
+            testWa.putExtra("message", msg);
+            sendBroadcast(testWa);
+
+            Intent testWb = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
+            testWb.setPackage("com.whatsapp.w4b");
+            testWb.putExtra("number", jid);
+            testWb.putExtra("message", msg);
+            sendBroadcast(testWb);
+
+            Toast.makeText(this, "Sinyal uji coba ditembakkan!", Toast.LENGTH_SHORT).show();
+        });
+        form.addView(testBtn);
+
+        Button save = createBtn("SIMPAN JADWAL", "#128C7E");
         save.setOnClickListener(v -> {
             String jid = phoneInput.getText().toString().replaceAll("[^0-9]", "");
             String msg = msgIn.getText().toString();
@@ -163,6 +188,7 @@ public class SchedulerActivity extends Activity {
             finish();
         });
         form.addView(save);
+        
         setContentView(scroll);
     }
 
@@ -186,7 +212,6 @@ public class SchedulerActivity extends Activity {
             itWa.setPackage("com.whatsapp");
             itWa.putExtra("number", jid);
             itWa.putExtra("message", msg);
-            itWa.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             PendingIntent piWa = PendingIntent.getBroadcast(this, id, itWa, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             am.setAlarmClock(new AlarmManager.AlarmClockInfo(cal.getTimeInMillis(), piWa), piWa);
 
@@ -194,11 +219,10 @@ public class SchedulerActivity extends Activity {
             itWb.setPackage("com.whatsapp.w4b");
             itWb.putExtra("number", jid);
             itWb.putExtra("message", msg);
-            itWb.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             PendingIntent piWb = PendingIntent.getBroadcast(this, id + 1, itWb, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             am.setAlarmClock(new AlarmManager.AlarmClockInfo(cal.getTimeInMillis(), piWb), piWb);
 
-            Toast.makeText(this, "Jadwal dikunci via Tasker Bridge", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Jadwal disimpan", Toast.LENGTH_SHORT).show();
         } catch (Exception ignored) {}
     }
 
@@ -207,6 +231,14 @@ public class SchedulerActivity extends Activity {
         b.setText(t);
         b.setTextColor(Color.WHITE);
         b.setBackground(getShape(Color.parseColor(c), 12));
+        
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, 20, 0, 0);
+        b.setLayoutParams(params);
+        
         return b;
     }
 

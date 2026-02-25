@@ -12,7 +12,6 @@ import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.PowerManager;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -143,7 +142,6 @@ public class FeatureLoader {
                 supportedVersions = Arrays.asList(mApp.getResources().getStringArray(Objects.equals(mApp.getPackageName(), FeatureLoader.PACKAGE_WPP) ? ResId.array.supported_versions_wpp : ResId.array.supported_versions_business));
                 mApp.registerActivityLifecycleCallbacks(new WaCallback());
                 registerReceivers();
-                hookWidgetProvider(loader);
                 try {
                     var timemillis = System.currentTimeMillis();
                     UnobfuscatorCache.init(mApp);
@@ -200,59 +198,6 @@ public class FeatureLoader {
                 }
             }
         });
-    }
-
-    @SuppressWarnings("deprecation")
-    private static void hookWidgetProvider(ClassLoader loader) {
-        try {
-            Class<?> widgetClass = XposedHelpers.findClassIfExists("com.whatsapp.appwidget.WidgetProvider", loader);
-            if (widgetClass != null) {
-                XposedBridge.hookAllMethods(widgetClass, "onReceive", new XC_MethodHook() {
-                    @Override
-                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                        Intent intent = (Intent) param.args[1];
-                        if (intent != null && "com.wmods.wppenhacer.EXECUTE_SCHEDULE".equals(intent.getAction())) {
-                            Context context = (Context) param.args[0];
-                            String jid = intent.getStringExtra("JID");
-                            String msg = intent.getStringExtra("MESSAGE");
-
-                            if (jid != null && msg != null) {
-                                Toast.makeText(context, "Membangunkan WhatsApp...", Toast.LENGTH_LONG).show();
-
-                                PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-                                PowerManager.WakeLock wakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE, "WaEnhancer::ForceWake");
-                                wakeLock.acquire(10000);
-
-                                Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
-                                if (launchIntent != null) {
-                                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                                    context.startActivity(launchIntent);
-                                }
-
-                                new Thread(() -> {
-                                    try {
-                                        Thread.sleep(3000);
-                                        android.os.Looper.prepare();
-                                        String cleanJid = jid.contains("@") ? jid.split("@")[0] : jid;
-                                        WppCore.sendMessage(cleanJid, msg);
-
-                                        Thread.sleep(1000);
-                                        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
-                                        homeIntent.addCategory(Intent.CATEGORY_HOME);
-                                        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                        context.startActivity(homeIntent);
-
-                                        android.os.Looper.loop();
-                                    } catch (Exception ignored) {
-                                    }
-                                }).start();
-                            }
-                            param.setResult(null);
-                        }
-                    }
-                });
-            }
-        } catch (Throwable ignored) {}
     }
 
     public static void disableExpirationVersion(ClassLoader classLoader) throws Exception {

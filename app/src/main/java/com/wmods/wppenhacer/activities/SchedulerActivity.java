@@ -103,13 +103,13 @@ public class SchedulerActivity extends Activity {
 
                         AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
 
-                        Intent itWa = new Intent("com.wmods.wppenhacer.EXECUTE_SCHEDULE");
-                        itWa.setClassName("com.whatsapp", "com.whatsapp.appwidget.WidgetProvider");
+                        Intent itWa = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
+                        itWa.setPackage("com.whatsapp");
                         PendingIntent piWa = PendingIntent.getBroadcast(this, alarmId, itWa, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                         am.cancel(piWa);
 
-                        Intent itWb = new Intent("com.wmods.wppenhacer.EXECUTE_SCHEDULE");
-                        itWb.setClassName("com.whatsapp.w4b", "com.whatsapp.appwidget.WidgetProvider");
+                        Intent itWb = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
+                        itWb.setPackage("com.whatsapp.w4b");
                         PendingIntent piWb = PendingIntent.getBroadcast(this, alarmId + 1, itWb, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                         am.cancel(piWb);
 
@@ -182,21 +182,23 @@ public class SchedulerActivity extends Activity {
 
             AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
 
-            Intent itWa = new Intent("com.wmods.wppenhacer.EXECUTE_SCHEDULE");
-            itWa.setClassName("com.whatsapp", "com.whatsapp.appwidget.WidgetProvider");
-            itWa.putExtra("JID", jid);
-            itWa.putExtra("MESSAGE", msg);
+            Intent itWa = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
+            itWa.setPackage("com.whatsapp");
+            itWa.putExtra("number", jid);
+            itWa.putExtra("message", msg);
+            itWa.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             PendingIntent piWa = PendingIntent.getBroadcast(this, id, itWa, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             am.setAlarmClock(new AlarmManager.AlarmClockInfo(cal.getTimeInMillis(), piWa), piWa);
 
-            Intent itWb = new Intent("com.wmods.wppenhacer.EXECUTE_SCHEDULE");
-            itWb.setClassName("com.whatsapp.w4b", "com.whatsapp.appwidget.WidgetProvider");
-            itWb.putExtra("JID", jid);
-            itWb.putExtra("MESSAGE", msg);
+            Intent itWb = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
+            itWb.setPackage("com.whatsapp.w4b");
+            itWb.putExtra("number", jid);
+            itWb.putExtra("message", msg);
+            itWb.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             PendingIntent piWb = PendingIntent.getBroadcast(this, id + 1, itWb, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             am.setAlarmClock(new AlarmManager.AlarmClockInfo(cal.getTimeInMillis(), piWb), piWb);
 
-            Toast.makeText(this, "Jadwal terkunci sistem", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Jadwal dikunci via Tasker Bridge", Toast.LENGTH_SHORT).show();
         } catch (Exception ignored) {}
     }
 

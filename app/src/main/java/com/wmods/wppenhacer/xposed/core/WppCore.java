@@ -211,6 +211,30 @@ public class WppCore {
                 return;
             }
 
+            Method classicMethod = null;
+            for (Method m : actionUser.getDeclaredMethods()) {
+                Class<?>[] params = m.getParameterTypes();
+                if (ReflectionUtils.findIndexOfType(params, String.class) != -1 && 
+                    ReflectionUtils.findIndexOfType(params, java.util.List.class) != -1) {
+                    classicMethod = m;
+                    break;
+                }
+            }
+
+            if (classicMethod != null) {
+                var newObject = new Object[classicMethod.getParameterCount()];
+                for (int i = 0; i < newObject.length; i++) {
+                    newObject[i] = ReflectionUtils.getDefaultValue(classicMethod.getParameterTypes()[i]);
+                }
+                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), String.class)] = message;
+                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), java.util.List.class)] = Collections.singletonList(userJid);
+                
+                classicMethod.setAccessible(true);
+                classicMethod.invoke(au, newObject);
+                XposedBridge.log("WppCore_SUCCESS: Pesan dieksekusi (Klasik)");
+                return;
+            }
+
             Method targetMethod = null;
             Class<?> wrapperClass = null;
 
@@ -244,7 +268,9 @@ public class WppCore {
                     if (c.getParameterCount() == 3) {
                         c.setAccessible(true);
                         try {
-                            wrapperInstance = c.newInstance(userJid, "", false);
+                            // KUNCI UTAMA: Memberikan ID Unik dan menyetel fromMe menjadi TRUE
+                            String randomMsgId = "WAE" + System.currentTimeMillis();
+                            wrapperInstance = c.newInstance(userJid, randomMsgId, true);
                             break;
                         } catch (Exception ex) {
                             XposedBridge.log("WppCore_WRAPPER_ERR: " + ex.getCause());
@@ -263,7 +289,7 @@ public class WppCore {
                         args[1] = message;
                     }
                     targetMethod.invoke(au, args);
-                    XposedBridge.log("WppCore_SUCCESS: Pesan dieksekusi via Wrapper!");
+                    XposedBridge.log("WppCore_SUCCESS: Pesan SUKSES dieksekusi dengan fromMe=TRUE!");
                 } else {
                     XposedBridge.log("WppCore_ERR: Wrapper instance gagal dibuat.");
                 }
@@ -275,6 +301,7 @@ public class WppCore {
             XposedBridge.log("WppCore_CRASH: " + e.getMessage());
         }
     }
+
 
 
 

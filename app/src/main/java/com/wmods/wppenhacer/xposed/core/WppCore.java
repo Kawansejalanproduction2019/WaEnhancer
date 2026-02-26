@@ -195,10 +195,17 @@ public class WppCore {
         return true;
     }
 
+    // ==== FUNGSI SEND MESSAGE YANG DIREVISI ====
     public static void sendMessage(String number, String message) {
         try {
             XposedBridge.log("WppCore_START_SEND: Num=" + number + " Msg=" + message);
-            var senderMethod = ReflectionUtils.findMethodUsingFilterIfExists(actionUser, (method) -> List.class.isAssignableFrom(method.getReturnType()) && ReflectionUtils.findIndexOfType(method.getParameterTypes(), String.class) != -1);
+            
+            // FILTER BARU: Mengabaikan Return Type, Hanya fokus pada Parameter (String dan List)
+            var senderMethod = ReflectionUtils.findMethodUsingFilterIfExists(actionUser, (method) -> 
+                ReflectionUtils.findIndexOfType(method.getParameterTypes(), String.class) != -1 && 
+                ReflectionUtils.findIndexOfType(method.getParameterTypes(), List.class) != -1
+            );
+            
             if (senderMethod != null) {
                 XposedBridge.log("WppCore_METHOD_FOUND: " + senderMethod.getName());
                 String cleanNum = number.contains("@") ? number.split("@")[0] : number;
@@ -208,6 +215,7 @@ public class WppCore {
                     return;
                 }
                 XposedBridge.log("WppCore_JID_OK: " + userJid.toString());
+                
                 var newObject = new Object[senderMethod.getParameterCount()];
                 for (int i = 0; i < newObject.length; i++) {
                     var param = senderMethod.getParameterTypes()[i];
@@ -227,7 +235,18 @@ public class WppCore {
                 Object res = senderMethod.invoke(au, newObject);
                 XposedBridge.log("WppCore_SUCCESS_RES: " + (res != null ? res.toString() : "NULL"));
             } else {
-                XposedBridge.log("WppCore_METHOD_NOT_FOUND");
+                XposedBridge.log("WppCore_METHOD_NOT_FOUND_AGAIN! DUMPING SEMUA METHOD:");
+                // DUMPER KELAS BERAT: Mencetak semua method di dalam actionUser yang punya parameter String
+                for (Method m : actionUser.getDeclaredMethods()) {
+                    Class<?>[] params = m.getParameterTypes();
+                    boolean hasString = false;
+                    for (Class<?> p : params) {
+                        if (p == String.class) hasString = true;
+                    }
+                    if (hasString) {
+                         XposedBridge.log("DUMP_METHOD: " + m.getName() + " | Params: " + Arrays.toString(params));
+                    }
+                }
             }
         } catch (Exception e) {
             XposedBridge.log("WppCore_CRASH: " + e.getMessage());
@@ -246,11 +265,10 @@ public class WppCore {
     public static Object getActionUser() {
         try {
             if (mActionUser == null) {
-                XposedBridge.log("WppCore_NEW_ACTION_USER_INSTANCE_CREATED");
                 mActionUser = actionUser.getConstructors()[0].newInstance();
             }
         } catch (Exception e) {
-            XposedBridge.log("WppCore_ACTION_USER_CRASH: " + e.getMessage());
+            XposedBridge.log(e);
         }
         return mActionUser;
     }
@@ -461,11 +479,9 @@ public class WppCore {
         if (rawjid == null) return null;
         var genInstance = XposedHelpers.newInstance(mGenJidClass);
         try {
-            Object res = mGenJidMethod.invoke(genInstance, rawjid);
-            XposedBridge.log("WppCore_GEN_JID_SUCCESS: " + (res != null ? res.toString() : "NULL"));
-            return res;
+            return mGenJidMethod.invoke(genInstance, rawjid);
         } catch (Exception e) {
-            XposedBridge.log("WppCore_GEN_JID_CRASH: " + e.getMessage());
+            XposedBridge.log(e);
         }
         return null;
     }

@@ -103,15 +103,9 @@ public class SchedulerActivity extends Activity {
 
                         AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
 
-                        Intent itWa = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
-                        itWa.setPackage("com.whatsapp");
-                        PendingIntent piWa = PendingIntent.getBroadcast(this, alarmId, itWa, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-                        am.cancel(piWa);
-
-                        Intent itWb = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
-                        itWb.setPackage("com.whatsapp.w4b");
-                        PendingIntent piWb = PendingIntent.getBroadcast(this, alarmId + 1, itWb, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-                        am.cancel(piWb);
+                        Intent itGlobal = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
+                        PendingIntent piGlobal = PendingIntent.getBroadcast(this, alarmId, itGlobal, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                        am.cancel(piGlobal);
 
                         loadSavedData();
                     } catch (Exception ignored) {}
@@ -159,19 +153,14 @@ public class SchedulerActivity extends Activity {
                 return;
             }
 
-            Intent testWa = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
-            testWa.setPackage("com.whatsapp");
-            testWa.putExtra("number", jid);
-            testWa.putExtra("message", msg);
-            sendBroadcast(testWa);
+            // Murni mengikuti Tasker: Global Broadcast tanpa setPackage!
+            Intent testIntent = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
+            testIntent.putExtra("number", jid);
+            testIntent.putExtra("message", msg);
+            testIntent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
+            sendBroadcast(testIntent);
 
-            Intent testWb = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
-            testWb.setPackage("com.whatsapp.w4b");
-            testWb.putExtra("number", jid);
-            testWb.putExtra("message", msg);
-            sendBroadcast(testWb);
-
-            Toast.makeText(this, "Sinyal uji coba ditembakkan!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Sinyal Global Tasker ditembakkan!", Toast.LENGTH_SHORT).show();
         });
         form.addView(testBtn);
 
@@ -208,21 +197,15 @@ public class SchedulerActivity extends Activity {
 
             AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
 
-            Intent itWa = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
-            itWa.setPackage("com.whatsapp");
-            itWa.putExtra("number", jid);
-            itWa.putExtra("message", msg);
-            PendingIntent piWa = PendingIntent.getBroadcast(this, id, itWa, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            am.setAlarmClock(new AlarmManager.AlarmClockInfo(cal.getTimeInMillis(), piWa), piWa);
+            Intent itGlobal = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
+            itGlobal.putExtra("number", jid);
+            itGlobal.putExtra("message", msg);
+            itGlobal.addFlags(Intent.FLAG_RECEIVER_FOREGROUND | Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
+            
+            PendingIntent piGlobal = PendingIntent.getBroadcast(this, id, itGlobal, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            am.setAlarmClock(new AlarmManager.AlarmClockInfo(cal.getTimeInMillis(), piGlobal), piGlobal);
 
-            Intent itWb = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
-            itWb.setPackage("com.whatsapp.w4b");
-            itWb.putExtra("number", jid);
-            itWb.putExtra("message", msg);
-            PendingIntent piWb = PendingIntent.getBroadcast(this, id + 1, itWb, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            am.setAlarmClock(new AlarmManager.AlarmClockInfo(cal.getTimeInMillis(), piWb), piWb);
-
-            Toast.makeText(this, "Jadwal disimpan", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Jadwal dikunci (Global Tasker Mode)", Toast.LENGTH_SHORT).show();
         } catch (Exception ignored) {}
     }
 

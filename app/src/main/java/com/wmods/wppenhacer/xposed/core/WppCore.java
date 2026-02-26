@@ -197,12 +197,17 @@ public class WppCore {
 
     public static void sendMessage(String number, String message) {
         try {
+            XposedBridge.log("WppCore_START_SEND: Num=" + number + " Msg=" + message);
             var senderMethod = ReflectionUtils.findMethodUsingFilterIfExists(actionUser, (method) -> List.class.isAssignableFrom(method.getReturnType()) && ReflectionUtils.findIndexOfType(method.getParameterTypes(), String.class) != -1);
             if (senderMethod != null) {
+                XposedBridge.log("WppCore_METHOD_FOUND: " + senderMethod.getName());
                 String cleanNum = number.contains("@") ? number.split("@")[0] : number;
                 var userJid = createUserJid(cleanNum + "@s.whatsapp.net");
-                if (userJid == null) return;
-                
+                if (userJid == null) {
+                    XposedBridge.log("WppCore_JID_FAILED");
+                    return;
+                }
+                XposedBridge.log("WppCore_JID_OK: " + userJid.toString());
                 var newObject = new Object[senderMethod.getParameterCount()];
                 for (int i = 0; i < newObject.length; i++) {
                     var param = senderMethod.getParameterTypes()[i];
@@ -212,10 +217,20 @@ public class WppCore {
                 newObject[index] = message;
                 var index2 = ReflectionUtils.findIndexOfType(senderMethod.getParameterTypes(), List.class);
                 newObject[index2] = Collections.singletonList(userJid);
-                senderMethod.invoke(getActionUser(), newObject);
+                
+                Object au = getActionUser();
+                if (au == null) {
+                    XposedBridge.log("WppCore_ACTIONUSER_NULL");
+                    return;
+                }
+                XposedBridge.log("WppCore_INVOKING");
+                Object res = senderMethod.invoke(au, newObject);
+                XposedBridge.log("WppCore_SUCCESS_RES: " + (res != null ? res.toString() : "NULL"));
+            } else {
+                XposedBridge.log("WppCore_METHOD_NOT_FOUND");
             }
         } catch (Exception e) {
-            XposedBridge.log(e);
+            XposedBridge.log("WppCore_CRASH: " + e.getMessage());
         }
     }
 
@@ -231,10 +246,11 @@ public class WppCore {
     public static Object getActionUser() {
         try {
             if (mActionUser == null) {
+                XposedBridge.log("WppCore_NEW_ACTION_USER_INSTANCE_CREATED");
                 mActionUser = actionUser.getConstructors()[0].newInstance();
             }
         } catch (Exception e) {
-            XposedBridge.log(e);
+            XposedBridge.log("WppCore_ACTION_USER_CRASH: " + e.getMessage());
         }
         return mActionUser;
     }
@@ -445,9 +461,11 @@ public class WppCore {
         if (rawjid == null) return null;
         var genInstance = XposedHelpers.newInstance(mGenJidClass);
         try {
-            return mGenJidMethod.invoke(genInstance, rawjid);
+            Object res = mGenJidMethod.invoke(genInstance, rawjid);
+            XposedBridge.log("WppCore_GEN_JID_SUCCESS: " + (res != null ? res.toString() : "NULL"));
+            return res;
         } catch (Exception e) {
-            XposedBridge.log(e);
+            XposedBridge.log("WppCore_GEN_JID_CRASH: " + e.getMessage());
         }
         return null;
     }

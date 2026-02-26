@@ -11,7 +11,6 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.DatePicker;
@@ -153,14 +152,13 @@ public class SchedulerActivity extends Activity {
                 return;
             }
 
-            // Murni mengikuti Tasker: Global Broadcast tanpa setPackage!
             Intent testIntent = new Intent("com.wmods.wppenhacer.MESSAGE_SENT");
             testIntent.putExtra("number", jid);
             testIntent.putExtra("message", msg);
             testIntent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
             sendBroadcast(testIntent);
 
-            Toast.makeText(this, "Sinyal Global Tasker ditembakkan!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Sinyal Injeksi ditembakkan!", Toast.LENGTH_SHORT).show();
         });
         form.addView(testBtn);
 
@@ -205,7 +203,7 @@ public class SchedulerActivity extends Activity {
             PendingIntent piGlobal = PendingIntent.getBroadcast(this, id, itGlobal, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             am.setAlarmClock(new AlarmManager.AlarmClockInfo(cal.getTimeInMillis(), piGlobal), piGlobal);
 
-            Toast.makeText(this, "Jadwal dikunci (Global Tasker Mode)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Jadwal dikunci (Injeksi Latar Belakang)", Toast.LENGTH_SHORT).show();
         } catch (Exception ignored) {}
     }
 

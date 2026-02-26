@@ -197,38 +197,62 @@ public class WppCore {
 
     public static void sendMessage(String number, String message) {
         try {
-            XposedBridge.log("========== BONGKAR TOTAL MESIN WHATSAPP ==========");
-            if (actionUser == null) {
-                XposedBridge.log("WppCore_ERR: Kelas actionUser KOSONG (Unobfuscator Gagal)");
+            XposedBridge.log("WppCore_START_SEND: Num=" + number + " Msg=" + message);
+            String cleanNum = number.contains("@") ? number.split("@")[0] : number;
+            var userJid = createUserJid(cleanNum + "@s.whatsapp.net");
+            if (userJid == null) {
+                XposedBridge.log("WppCore_ERR: JID Null");
                 return;
             }
-            
-            XposedBridge.log("Nama Kelas Mesin: " + actionUser.getName());
-            
-            java.lang.reflect.Method[] methods = actionUser.getDeclaredMethods();
-            XposedBridge.log("Total Tombol/Fungsi di dalam mesin ini: " + methods.length);
-            
-            for (java.lang.reflect.Method m : methods) {
-                Class<?>[] params = m.getParameterTypes();
-                StringBuilder paramStr = new StringBuilder();
-                for (Class<?> p : params) {
-                    paramStr.append(p.getSimpleName()).append(", ");
-                }
-                String finalParams = paramStr.length() > 0 ? paramStr.substring(0, paramStr.length() - 2) : "KOSONG";
-                
-                XposedBridge.log("-> METHOD: " + m.getName() + " | RETURN: " + m.getReturnType().getSimpleName() + " | PARAMS: [" + finalParams + "]");
+
+            Object au = getActionUser();
+            if (au == null) {
+                XposedBridge.log("WppCore_ERR: ActionUser Null");
+                return;
             }
-            XposedBridge.log("================ SELESAI BONGKAR =================");
+
+            java.lang.reflect.Method sendMethod = null;
             
+            for (java.lang.reflect.Method m : actionUser.getMethods()) {
+                Class<?>[] params = m.getParameterTypes();
+                boolean hasString = false;
+                boolean hasList = false;
+                
+                for (Class<?> p : params) {
+                    if (p == String.class) hasString = true;
+                    if (p == java.util.List.class) hasList = true;
+                }
+                
+                if (hasString && hasList) {
+                    sendMethod = m;
+                    XposedBridge.log("WppCore_FOUND_DEEP_METHOD: " + m.getName() + " di " + m.getDeclaringClass().getSimpleName());
+                    break;
+                }
+            }
+
+            if (sendMethod != null) {
+                var newObject = new Object[sendMethod.getParameterCount()];
+                for (int i = 0; i < newObject.length; i++) {
+                    Class<?> pType = sendMethod.getParameterTypes()[i];
+                    if (pType == String.class) {
+                        newObject[i] = message;
+                    } else if (pType == java.util.List.class) {
+                        newObject[i] = java.util.Collections.singletonList(userJid);
+                    } else {
+                        newObject[i] = ReflectionUtils.getDefaultValue(pType);
+                    }
+                }
+                sendMethod.setAccessible(true);
+                sendMethod.invoke(au, newObject);
+                XposedBridge.log("WppCore_SUCCESS: Pesan terinjeksi ke API!");
+            } else {
+                XposedBridge.log("WppCore_FATAL: Method String+List musnah dari kelas induk.");
+            }
+
         } catch (Exception e) {
             XposedBridge.log("WppCore_CRASH: " + e.getMessage());
         }
     }
-
-
-
-
-
 
 
 

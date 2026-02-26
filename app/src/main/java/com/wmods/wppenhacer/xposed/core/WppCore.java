@@ -201,35 +201,13 @@ public class WppCore {
             String cleanNum = number.contains("@") ? number.split("@")[0] : number;
             var userJid = createUserJid(cleanNum + "@s.whatsapp.net");
             if (userJid == null) {
+                XposedBridge.log("WppCore_ERR: JID Null");
                 return;
             }
 
             Object au = getActionUser();
             if (au == null) {
-                return;
-            }
-
-            Method classicMethod = null;
-            for (Method m : actionUser.getDeclaredMethods()) {
-                Class<?>[] params = m.getParameterTypes();
-                if (ReflectionUtils.findIndexOfType(params, String.class) != -1 && 
-                    ReflectionUtils.findIndexOfType(params, java.util.List.class) != -1) {
-                    classicMethod = m;
-                    break;
-                }
-            }
-
-            if (classicMethod != null) {
-                var newObject = new Object[classicMethod.getParameterCount()];
-                for (int i = 0; i < newObject.length; i++) {
-                    newObject[i] = ReflectionUtils.getDefaultValue(classicMethod.getParameterTypes()[i]);
-                }
-                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), String.class)] = message;
-                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), java.util.List.class)] = Collections.singletonList(userJid);
-                
-                classicMethod.setAccessible(true);
-                classicMethod.invoke(au, newObject);
-                XposedBridge.log("WppCore_SUCCESS: Mode Klasik");
+                XposedBridge.log("WppCore_ERR: ActionUser Null");
                 return;
             }
 
@@ -266,9 +244,11 @@ public class WppCore {
                     if (c.getParameterCount() == 3) {
                         c.setAccessible(true);
                         try {
-                            wrapperInstance = c.newInstance(userJid, null, false);
+                            wrapperInstance = c.newInstance(userJid, "", false);
                             break;
-                        } catch (Exception ignored) {}
+                        } catch (Exception ex) {
+                            XposedBridge.log("WppCore_WRAPPER_ERR: " + ex.getCause());
+                        }
                     }
                 }
 
@@ -283,14 +263,19 @@ public class WppCore {
                         args[1] = message;
                     }
                     targetMethod.invoke(au, args);
-                    XposedBridge.log("WppCore_SUCCESS: Mode Wrapper");
+                    XposedBridge.log("WppCore_SUCCESS: Pesan dieksekusi via Wrapper!");
+                } else {
+                    XposedBridge.log("WppCore_ERR: Wrapper instance gagal dibuat.");
                 }
+            } else {
+                XposedBridge.log("WppCore_ERR: Method atau Wrapper tidak ditemukan.");
             }
 
         } catch (Exception e) {
             XposedBridge.log("WppCore_CRASH: " + e.getMessage());
         }
     }
+
 
 
 

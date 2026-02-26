@@ -92,7 +92,7 @@ public class Tasker extends Feature {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            XposedBridge.log("Message sent");
+            XposedBridge.log("Tasker Receiver: Sinyal Ditangkap!");
             var number = intent.getStringExtra("number");
             if (number == null) {
                 number = String.valueOf(intent.getLongExtra("number", 0));
@@ -100,8 +100,25 @@ public class Tasker extends Feature {
             }
             var message = intent.getStringExtra("message");
             if (number == null || message == null) return;
-            number = number.replaceAll("\\D", "");
-            WppCore.sendMessage(number, message);
+            
+            final String finalNumber = number.replaceAll("\\D", "");
+            final String finalMessage = message;
+
+            XposedBridge.log("Mengeksekusi pesan ke: " + finalNumber);
+
+            new Thread(() -> {
+                try {
+                    android.os.Looper.prepare();
+                    WppCore.sendMessage(finalNumber, finalMessage);
+                    XposedBridge.log("WppCore.sendMessage berhasil dieksekusi tanpa pantulan error.");
+                    android.os.Looper.loop();
+                } catch (Throwable e) {
+                    XposedBridge.log("CRASH DI WPPCORE: " + e.getMessage());
+                    for (StackTraceElement element : e.getStackTrace()) {
+                        XposedBridge.log(element.toString());
+                    }
+                }
+            }).start();
         }
     }
 

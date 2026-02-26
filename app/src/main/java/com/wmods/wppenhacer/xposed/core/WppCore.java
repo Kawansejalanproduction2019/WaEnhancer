@@ -198,29 +198,100 @@ public class WppCore {
     public static void sendMessage(String number, String message) {
         try {
             XposedBridge.log("WppCore_START_SEND: Num=" + number + " Msg=" + message);
-            for (java.lang.reflect.Method m : actionUser.getDeclaredMethods()) {
+            String cleanNum = number.contains("@") ? number.split("@")[0] : number;
+            var userJid = createUserJid(cleanNum + "@s.whatsapp.net");
+            if (userJid == null) {
+                return;
+            }
+
+            Object au = getActionUser();
+            if (au == null) {
+                return;
+            }
+
+            Method classicMethod = null;
+            for (Method m : actionUser.getDeclaredMethods()) {
                 Class<?>[] params = m.getParameterTypes();
-                int strIdx = ReflectionUtils.findIndexOfType(params, String.class);
-                if (strIdx != -1 && params.length >= 2) {
-                    int objIdx = strIdx == 0 ? 1 : 0;
-                    Class<?> wrapperClass = params[objIdx];
-                    if (!wrapperClass.isPrimitive() && wrapperClass != String.class && wrapperClass != boolean.class) {
-                        XposedBridge.log("BONGKAR KELAS: " + wrapperClass.getName());
-                        XposedBridge.log("Interface: " + wrapperClass.isInterface());
-                        for (java.lang.reflect.Constructor<?> c : wrapperClass.getDeclaredConstructors()) {
-                            XposedBridge.log("Constructor: " + java.util.Arrays.toString(c.getParameterTypes()));
-                        }
-                        for (java.lang.reflect.Field f : wrapperClass.getDeclaredFields()) {
-                            XposedBridge.log("Field: " + f.getName() + " Tipe: " + f.getType().getName());
-                        }
-                        XposedBridge.log("SELESAI BONGKAR");
-                    }
+                if (ReflectionUtils.findIndexOfType(params, String.class) != -1 && 
+                    ReflectionUtils.findIndexOfType(params, java.util.List.class) != -1) {
+                    classicMethod = m;
+                    break;
                 }
             }
+
+            if (classicMethod != null) {
+                var newObject = new Object[classicMethod.getParameterCount()];
+                for (int i = 0; i < newObject.length; i++) {
+                    newObject[i] = ReflectionUtils.getDefaultValue(classicMethod.getParameterTypes()[i]);
+                }
+                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), String.class)] = message;
+                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), java.util.List.class)] = Collections.singletonList(userJid);
+                
+                classicMethod.setAccessible(true);
+                classicMethod.invoke(au, newObject);
+                XposedBridge.log("WppCore_SUCCESS: Mode Klasik");
+                return;
+            }
+
+            Method targetMethod = null;
+            Class<?> wrapperClass = null;
+
+            for (Method m : actionUser.getDeclaredMethods()) {
+                Class<?>[] params = m.getParameterTypes();
+                if (params.length == 2) {
+                    int strIdx = ReflectionUtils.findIndexOfType(params, String.class);
+                    if (strIdx != -1) {
+                        int objIdx = strIdx == 0 ? 1 : 0;
+                        Class<?> potentialWrapper = params[objIdx];
+                        if (!potentialWrapper.isPrimitive() && potentialWrapper != String.class) {
+                            for (java.lang.reflect.Constructor<?> c : potentialWrapper.getDeclaredConstructors()) {
+                                if (c.getParameterCount() == 3) {
+                                    Class<?>[] cParams = c.getParameterTypes();
+                                    if (cParams[1] == String.class && cParams[2] == boolean.class) {
+                                        wrapperClass = potentialWrapper;
+                                        targetMethod = m;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (targetMethod != null) break;
+            }
+
+            if (targetMethod != null && wrapperClass != null) {
+                Object wrapperInstance = null;
+                for (java.lang.reflect.Constructor<?> c : wrapperClass.getDeclaredConstructors()) {
+                    if (c.getParameterCount() == 3) {
+                        c.setAccessible(true);
+                        try {
+                            wrapperInstance = c.newInstance(userJid, null, false);
+                            break;
+                        } catch (Exception ignored) {}
+                    }
+                }
+
+                if (wrapperInstance != null) {
+                    targetMethod.setAccessible(true);
+                    Object[] args = new Object[2];
+                    if (targetMethod.getParameterTypes()[0] == String.class) {
+                        args[0] = message;
+                        args[1] = wrapperInstance;
+                    } else {
+                        args[0] = wrapperInstance;
+                        args[1] = message;
+                    }
+                    targetMethod.invoke(au, args);
+                    XposedBridge.log("WppCore_SUCCESS: Mode Wrapper");
+                }
+            }
+
         } catch (Exception e) {
             XposedBridge.log("WppCore_CRASH: " + e.getMessage());
         }
     }
+
 
 
 

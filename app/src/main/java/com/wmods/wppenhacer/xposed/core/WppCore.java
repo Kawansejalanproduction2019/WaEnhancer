@@ -195,18 +195,13 @@ public class WppCore {
         return true;
     }
 
-    // ==== FUNGSI SEND MESSAGE YANG SUDAH DIREVISI UNTUK WA TERBARU ====
     public static void sendMessage(String number, String message) {
         try {
             XposedBridge.log("WppCore_START_SEND: Num=" + number + " Msg=" + message);
-            
-            // FILTER BARU: Mencari method dengan 2 Parameter (JID Object dan String)
             var senderMethod = ReflectionUtils.findMethodUsingFilterIfExists(actionUser, (method) -> 
-                method.getParameterCount() == 2 &&
-                (method.getParameterTypes()[0] == String.class || method.getParameterTypes()[1] == String.class) &&
-                !method.getParameterTypes()[0].isPrimitive() && !method.getParameterTypes()[1].isPrimitive()
+                ReflectionUtils.findIndexOfType(method.getParameterTypes(), String.class) != -1 && 
+                ReflectionUtils.findIndexOfType(method.getParameterTypes(), java.util.List.class) != -1
             );
-            
             if (senderMethod != null) {
                 XposedBridge.log("WppCore_METHOD_FOUND: " + senderMethod.getName());
                 String cleanNum = number.contains("@") ? number.split("@")[0] : number;
@@ -215,30 +210,28 @@ public class WppCore {
                     XposedBridge.log("WppCore_JID_FAILED");
                     return;
                 }
-                XposedBridge.log("WppCore_JID_OK: " + userJid.toString());
-                
-                var newObject = new Object[2];
-                var stringIndex = senderMethod.getParameterTypes()[0] == String.class ? 0 : 1;
-                var jidIndex = stringIndex == 0 ? 1 : 0;
-                
-                newObject[stringIndex] = message;
-                newObject[jidIndex] = userJid; // Menggunakan JID langsung, tidak pakai List lagi!
-                
-                Object au = getActionUser();
-                if (au == null) {
-                    XposedBridge.log("WppCore_ACTIONUSER_NULL");
-                    return;
+                var newObject = new Object[senderMethod.getParameterCount()];
+                for (int i = 0; i < newObject.length; i++) {
+                    var param = senderMethod.getParameterTypes()[i];
+                    newObject[i] = ReflectionUtils.getDefaultValue(param);
                 }
+                var index = ReflectionUtils.findIndexOfType(senderMethod.getParameterTypes(), String.class);
+                newObject[index] = message;
+                var index2 = ReflectionUtils.findIndexOfType(senderMethod.getParameterTypes(), java.util.List.class);
+                newObject[index2] = Collections.singletonList(userJid);
+                Object au = getActionUser();
+                if (au == null) return;
                 XposedBridge.log("WppCore_INVOKING");
-                Object res = senderMethod.invoke(au, newObject);
-                XposedBridge.log("WppCore_SUCCESS_RES: " + (res != null ? res.toString() : "Berhasil Dieksekusi"));
+                senderMethod.invoke(au, newObject);
+                XposedBridge.log("WppCore_SUCCESS_RES: Sukses");
             } else {
-                XposedBridge.log("WppCore_METHOD_NOT_FOUND_FATAL");
+                XposedBridge.log("WppCore_METHOD_NOT_FOUND");
             }
         } catch (Exception e) {
             XposedBridge.log("WppCore_CRASH: " + e.getMessage());
         }
     }
+
 
     public static void sendReaction(String s, Object objMessage) {
         try {

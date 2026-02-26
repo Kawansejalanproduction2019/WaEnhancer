@@ -198,100 +198,30 @@ public class WppCore {
     public static void sendMessage(String number, String message) {
         try {
             XposedBridge.log("WppCore_START_SEND: Num=" + number + " Msg=" + message);
-            String cleanNum = number.contains("@") ? number.split("@")[0] : number;
-            var userJid = createUserJid(cleanNum + "@s.whatsapp.net");
-            if (userJid == null) {
-                XposedBridge.log("WppCore_JID_FAILED");
-                return;
-            }
-
-            Object au = getActionUser();
-            if (au == null) {
-                XposedBridge.log("WppCore_ACTIONUSER_NULL");
-                return;
-            }
-
-            // CARA 1: Metode Klasik (Mencari List & String) - Untuk WA versi lama
-            Method classicMethod = null;
-            for (Method m : actionUser.getDeclaredMethods()) {
-                Class<?>[] params = m.getParameterTypes();
-                if (ReflectionUtils.findIndexOfType(params, String.class) != -1 && 
-                    ReflectionUtils.findIndexOfType(params, java.util.List.class) != -1) {
-                    classicMethod = m;
-                    break;
-                }
-            }
-
-            if (classicMethod != null) {
-                XposedBridge.log("WppCore_CLASSIC_METHOD_FOUND: " + classicMethod.getName());
-                var newObject = new Object[classicMethod.getParameterCount()];
-                for (int i = 0; i < newObject.length; i++) {
-                    newObject[i] = ReflectionUtils.getDefaultValue(classicMethod.getParameterTypes()[i]);
-                }
-                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), String.class)] = message;
-                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), java.util.List.class)] = Collections.singletonList(userJid);
-                
-                classicMethod.setAccessible(true);
-                classicMethod.invoke(au, newObject);
-                XposedBridge.log("WppCore_SUCCESS: Pesan terkirim (Mode Klasik)");
-                return;
-            }
-
-            // CARA 2: Metode WA Beta Terbaru (Smart Wrapper Injection)
-            XposedBridge.log("WppCore_CLASSIC_FAILED. Memulai injeksi Mode Beta Wrapper...");
-            for (Method m : actionUser.getDeclaredMethods()) {
+            for (java.lang.reflect.Method m : actionUser.getDeclaredMethods()) {
                 Class<?>[] params = m.getParameterTypes();
                 int strIdx = ReflectionUtils.findIndexOfType(params, String.class);
-                
-                // Cari method yang punya 2 parameter (String dan Sebuah Objek Custom)
                 if (strIdx != -1 && params.length >= 2) {
-                    int objIdx = (strIdx == 0) ? 1 : 0;
+                    int objIdx = strIdx == 0 ? 1 : 0;
                     Class<?> wrapperClass = params[objIdx];
-                    
-                    if (!wrapperClass.isPrimitive() && wrapperClass != String.class) {
-                        Object wrapperInstance = null;
-
-                        // Meretas konstruktor kelas bungkus WhatsApp dan menyuntikkan JID kita
+                    if (!wrapperClass.isPrimitive() && wrapperClass != String.class && wrapperClass != boolean.class) {
+                        XposedBridge.log("BONGKAR KELAS: " + wrapperClass.getName());
+                        XposedBridge.log("Interface: " + wrapperClass.isInterface());
                         for (java.lang.reflect.Constructor<?> c : wrapperClass.getDeclaredConstructors()) {
-                            c.setAccessible(true);
-                            try {
-                                if (c.getParameterCount() == 1) {
-                                    Class<?> pType = c.getParameterTypes()[0];
-                                    if (pType.isAssignableFrom(java.util.List.class)) {
-                                        wrapperInstance = c.newInstance(Collections.singletonList(userJid));
-                                        break;
-                                    } else if (pType.isAssignableFrom(userJid.getClass())) {
-                                        wrapperInstance = c.newInstance(userJid);
-                                        break;
-                                    }
-                                }
-                            } catch (Throwable ignored) {}
+                            XposedBridge.log("Constructor: " + java.util.Arrays.toString(c.getParameterTypes()));
                         }
-
-                        // Jika pelindungnya berhasil ditembus, tembakkan pesannya!
-                        if (wrapperInstance != null) {
-                            var newObject = new Object[m.getParameterCount()];
-                            for (int i = 0; i < newObject.length; i++) {
-                                newObject[i] = ReflectionUtils.getDefaultValue(params[i]);
-                            }
-                            newObject[strIdx] = message;
-                            newObject[objIdx] = wrapperInstance;
-
-                            m.setAccessible(true);
-                            m.invoke(au, newObject);
-                            XposedBridge.log("WppCore_SUCCESS: Pesan terkirim menggunakan Smart Wrapper: " + wrapperClass.getSimpleName());
-                            return;
+                        for (java.lang.reflect.Field f : wrapperClass.getDeclaredFields()) {
+                            XposedBridge.log("Field: " + f.getName() + " Tipe: " + f.getType().getName());
                         }
+                        XposedBridge.log("SELESAI BONGKAR");
                     }
                 }
             }
-            
-            XposedBridge.log("WppCore_FATAL_ERROR: Semua metode pengirim gagal ditembus.");
-
         } catch (Exception e) {
             XposedBridge.log("WppCore_CRASH: " + e.getMessage());
         }
     }
+
 
 
 

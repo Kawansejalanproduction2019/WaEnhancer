@@ -197,110 +197,34 @@ public class WppCore {
 
     public static void sendMessage(String number, String message) {
         try {
-            XposedBridge.log("WppCore_START_SEND: Num=" + number + " Msg=" + message);
-            String cleanNum = number.contains("@") ? number.split("@")[0] : number;
-            var userJid = createUserJid(cleanNum + "@s.whatsapp.net");
-            if (userJid == null) {
-                XposedBridge.log("WppCore_ERR: JID Null");
+            XposedBridge.log("========== BONGKAR TOTAL MESIN WHATSAPP ==========");
+            if (actionUser == null) {
+                XposedBridge.log("WppCore_ERR: Kelas actionUser KOSONG (Unobfuscator Gagal)");
                 return;
             }
-
-            Object au = getActionUser();
-            if (au == null) {
-                XposedBridge.log("WppCore_ERR: ActionUser Null");
-                return;
-            }
-
-            Method classicMethod = null;
-            for (Method m : actionUser.getDeclaredMethods()) {
+            
+            XposedBridge.log("Nama Kelas Mesin: " + actionUser.getName());
+            
+            java.lang.reflect.Method[] methods = actionUser.getDeclaredMethods();
+            XposedBridge.log("Total Tombol/Fungsi di dalam mesin ini: " + methods.length);
+            
+            for (java.lang.reflect.Method m : methods) {
                 Class<?>[] params = m.getParameterTypes();
-                if (ReflectionUtils.findIndexOfType(params, String.class) != -1 && 
-                    ReflectionUtils.findIndexOfType(params, java.util.List.class) != -1) {
-                    classicMethod = m;
-                    break;
+                StringBuilder paramStr = new StringBuilder();
+                for (Class<?> p : params) {
+                    paramStr.append(p.getSimpleName()).append(", ");
                 }
-            }
-
-            if (classicMethod != null) {
-                var newObject = new Object[classicMethod.getParameterCount()];
-                for (int i = 0; i < newObject.length; i++) {
-                    newObject[i] = ReflectionUtils.getDefaultValue(classicMethod.getParameterTypes()[i]);
-                }
-                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), String.class)] = message;
-                newObject[ReflectionUtils.findIndexOfType(classicMethod.getParameterTypes(), java.util.List.class)] = Collections.singletonList(userJid);
+                String finalParams = paramStr.length() > 0 ? paramStr.substring(0, paramStr.length() - 2) : "KOSONG";
                 
-                classicMethod.setAccessible(true);
-                classicMethod.invoke(au, newObject);
-                XposedBridge.log("WppCore_SUCCESS: Pesan dieksekusi (Klasik)");
-                return;
+                XposedBridge.log("-> METHOD: " + m.getName() + " | RETURN: " + m.getReturnType().getSimpleName() + " | PARAMS: [" + finalParams + "]");
             }
-
-            Method targetMethod = null;
-            Class<?> wrapperClass = null;
-
-            for (Method m : actionUser.getDeclaredMethods()) {
-                Class<?>[] params = m.getParameterTypes();
-                if (params.length == 2) {
-                    int strIdx = ReflectionUtils.findIndexOfType(params, String.class);
-                    if (strIdx != -1) {
-                        int objIdx = strIdx == 0 ? 1 : 0;
-                        Class<?> potentialWrapper = params[objIdx];
-                        if (!potentialWrapper.isPrimitive() && potentialWrapper != String.class) {
-                            for (java.lang.reflect.Constructor<?> c : potentialWrapper.getDeclaredConstructors()) {
-                                if (c.getParameterCount() == 3) {
-                                    Class<?>[] cParams = c.getParameterTypes();
-                                    if (cParams[1] == String.class && cParams[2] == boolean.class) {
-                                        wrapperClass = potentialWrapper;
-                                        targetMethod = m;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (targetMethod != null) break;
-            }
-
-            if (targetMethod != null && wrapperClass != null) {
-                Object wrapperInstance = null;
-                for (java.lang.reflect.Constructor<?> c : wrapperClass.getDeclaredConstructors()) {
-                    if (c.getParameterCount() == 3) {
-                        c.setAccessible(true);
-                        try {
-                            // KUNCI UTAMA: Memberikan ID Unik dan menyetel fromMe menjadi TRUE
-                            String randomMsgId = "WAE" + System.currentTimeMillis();
-                            wrapperInstance = c.newInstance(userJid, randomMsgId, true);
-                            break;
-                        } catch (Exception ex) {
-                            XposedBridge.log("WppCore_WRAPPER_ERR: " + ex.getCause());
-                        }
-                    }
-                }
-
-                if (wrapperInstance != null) {
-                    targetMethod.setAccessible(true);
-                    Object[] args = new Object[2];
-                    if (targetMethod.getParameterTypes()[0] == String.class) {
-                        args[0] = message;
-                        args[1] = wrapperInstance;
-                    } else {
-                        args[0] = wrapperInstance;
-                        args[1] = message;
-                    }
-                    targetMethod.invoke(au, args);
-                    XposedBridge.log("WppCore_SUCCESS: Pesan SUKSES dieksekusi dengan fromMe=TRUE!");
-                } else {
-                    XposedBridge.log("WppCore_ERR: Wrapper instance gagal dibuat.");
-                }
-            } else {
-                XposedBridge.log("WppCore_ERR: Method atau Wrapper tidak ditemukan.");
-            }
-
+            XposedBridge.log("================ SELESAI BONGKAR =================");
+            
         } catch (Exception e) {
             XposedBridge.log("WppCore_CRASH: " + e.getMessage());
         }
     }
+
 
 
 

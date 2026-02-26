@@ -1,14 +1,11 @@
 package com.wmods.wppenhacer.xposed.features.general;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Handler;
-import android.os.Looper;
 import android.text.TextUtils;
-import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -24,12 +21,10 @@ import java.util.Objects;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
-import de.robv.android.xposed.XposedHelpers;
 
 public class Tasker extends Feature {
     private static FMessageWpp fMessage;
     private static boolean taskerEnabled;
-    public static String autoSendTarget = null; // Kunci target untuk Ghost Touch Automator
 
     public Tasker(@NonNull ClassLoader classLoader, @NonNull XSharedPreferences preferences) {
         super(classLoader, preferences);
@@ -41,53 +36,12 @@ public class Tasker extends Feature {
         if (!taskerEnabled) return;
         hookReceiveMessage();
         registerSenderMessage();
-        hookAutoClicker(); // Aktifkan Hantu UI Automator
     }
 
     @NonNull
     @Override
     public String getPluginName() {
         return "Tasker";
-    }
-
-    private void hookAutoClicker() {
-        XposedHelpers.findAndHookMethod(Activity.class, "onResume", new XC_MethodHook() {
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                Activity activity = (Activity) param.thisObject;
-                
-                // Mencegat saat layar obrolan WA terbuka
-                if (activity.getClass().getName().contains("Conversation")) {
-                    if (autoSendTarget != null) {
-                        autoSendTarget = null; // Hapus target agar tidak terjadi pengulangan
-                        XposedBridge.log("Tasker UI Automator: Layar Obrolan Terbuka!");
-
-                        // Jeda 1 detik menunggu animasi WA selesai dan tombol Send muncul
-                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                            try {
-                                int sendId = activity.getResources().getIdentifier("send", "id", activity.getPackageName());
-                                View sendBtn = activity.findViewById(sendId);
-                                
-                                if (sendBtn != null && sendBtn.getVisibility() == View.VISIBLE) {
-                                    XposedBridge.log("Tasker UI Automator: Tombol Send Disentuh!");
-                                    sendBtn.performClick();
-                                    
-                                    // Melempar WA kembali ke mode tidur (Background)
-                                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                        activity.moveTaskToBack(true);
-                                        XposedBridge.log("Tasker UI Automator: Selesai, WA ditidurkan kembali.");
-                                    }, 1000);
-                                } else {
-                                    XposedBridge.log("Tasker UI Automator: Tombol Send tidak ditemukan (Mungkin teks kosong).");
-                                }
-                            } catch (Exception e) {
-                                XposedBridge.log("Tasker UI Automator Crash: " + e.getMessage());
-                            }
-                        }, 1000); 
-                    }
-                }
-            }
-        });
     }
 
     private void registerSenderMessage() {
@@ -132,11 +86,9 @@ public class Tasker extends Feature {
     }
 
     public static class SenderMessageBroadcastReceiver extends BroadcastReceiver {
-
         @Override
-        @SuppressWarnings("deprecation")
         public void onReceive(Context context, Intent intent) {
-            XposedBridge.log("Tasker Receiver: Sinyal Eksekusi Diterima!");
+            XposedBridge.log("Tasker Receiver: Sinyal Ditangkap!");
             var number = intent.getStringExtra("number");
             if (number == null) {
                 number = String.valueOf(intent.getLongExtra("number", 0));
@@ -146,27 +98,16 @@ public class Tasker extends Feature {
             if (number == null || message == null) return;
             
             final String finalNumber = number.replaceAll("\\D", "");
-            autoSendTarget = finalNumber;
-            XposedBridge.log("Tasker Receiver: Membangunkan layar dan memanggil UI Automator...");
-
-            try {
-                android.os.PowerManager pm = (android.os.PowerManager) context.getSystemService(Context.POWER_SERVICE);
-                if (pm != null) {
-                    android.os.PowerManager.WakeLock wl = pm.newWakeLock(
-                        android.os.PowerManager.FULL_WAKE_LOCK | 
-                        android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP | 
-                        android.os.PowerManager.ON_AFTER_RELEASE, 
-                        "WaEnhancer::AutoSend"
-                    );
-                    wl.acquire(5000);
+            
+            new Thread(() -> {
+                try {
+                    android.os.Looper.prepare();
+                    WppCore.sendMessage(finalNumber, message);
+                    android.os.Looper.loop();
+                } catch (Throwable e) {
+                    XposedBridge.log("CRASH: " + e.getMessage());
                 }
-            } catch (Exception ignored) {}
-
-            // Membuka paksa obrolan WA dengan nomor dan pesan yang sudah siap dikirim
-            Intent waIntent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("whatsapp://send?phone=" + finalNumber + "&text=" + android.net.Uri.encode(message)));
-            waIntent.setPackage(context.getPackageName());
-            waIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            context.startActivity(waIntent);
+            }).start();
         }
     }
 }

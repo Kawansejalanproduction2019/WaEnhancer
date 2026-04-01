@@ -24,7 +24,7 @@ public class HideAds extends Feature {
     public void doHook() throws Throwable {
         if (!prefs.getBoolean("hide_ads", true)) return;
 
-        XposedBridge.log("HideAds: Mesin Anti-Iklan Meta berhasil dihidupkan!");
+        XposedBridge.log("HideAds: Mesin Anti-Iklan Multi-Skala Siap Tempur!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
@@ -33,9 +33,10 @@ public class HideAds extends Feature {
                 if (text != null) {
                     String s = text.toString().trim();
                     if (s.equalsIgnoreCase("Bersponsor") || s.equalsIgnoreCase("Sponsored") || s.equalsIgnoreCase("Promosi")) {
-                        XposedBridge.log("HideAds: [TARGET TERKUNCI] Teks iklan terdeteksi -> " + s);
                         TextView tv = (TextView) param.thisObject;
-                        tv.setTag("META_AD_DETECTED");
+                        if ("META_PROCESSED".equals(tv.getTag())) return;
+                        tv.setTag("META_PROCESSED");
+                        
                         executeMultiScheme(tv);
                     }
                 }
@@ -46,10 +47,7 @@ public class HideAds extends Feature {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 View view = (View) param.thisObject;
-                if ("META_AD_DETECTED".equals(view.getTag())) {
-                    if ((int) param.args[0] != View.GONE) {
-                        XposedBridge.log("HideAds: [SKEMA 2] Menahan kemunculan iklan, memaksa GONE.");
-                    }
+                if ("META_AD_LIST_ITEM".equals(view.getTag())) {
                     param.args[0] = View.GONE;
                 }
             }
@@ -59,8 +57,7 @@ public class HideAds extends Feature {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 View view = (View) param.thisObject;
-                if ("META_AD_DETECTED".equals(view.getTag())) {
-                    XposedBridge.log("HideAds: [SKEMA 2] Menghancurkan render ukuran iklan menjadi 0x0.");
+                if ("META_AD_LIST_ITEM".equals(view.getTag())) {
                     param.args[0] = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.EXACTLY);
                     param.args[1] = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.EXACTLY);
                     param.setResult(null);
@@ -73,48 +70,58 @@ public class HideAds extends Feature {
         try {
             View current = view;
             boolean isFullScreen = false;
+            View targetRoot = null;
 
             for (int i = 0; i < 8; i++) {
                 if (current.getParent() instanceof View) {
                     current = (View) current.getParent();
-                    current.setTag("META_AD_DETECTED");
-                    
                     if (current.getHeight() > 1000) {
                         isFullScreen = true;
-                    }
-
-                    current.setVisibility(View.GONE);
-                    ViewGroup.LayoutParams params = current.getLayoutParams();
-                    if (params != null) {
-                        params.height = 0;
-                        params.width = 0;
-                        if (params instanceof ViewGroup.MarginLayoutParams) {
-                            ((ViewGroup.MarginLayoutParams) params).setMargins(0, 0, 0, 0);
-                        }
-                        current.setLayoutParams(params);
-                        XposedBridge.log("HideAds: [SKEMA 1] Dimensi parent ke-" + i + " berhasil dihancurkan.");
+                        targetRoot = current;
                     }
                 } else {
                     break;
                 }
             }
 
-            if (isFullScreen && current != null) {
-                XposedBridge.log("HideAds: [SKEMA 3] Iklan Layar Penuh terdeteksi! Mengeksekusi Auto-Skip...");
+            if (isFullScreen && targetRoot != null) {
+                XposedBridge.log("HideAds: [SKEMA 3] Iklan Layar Penuh! Melakukan Auto-Skip...");
                 long downTime = SystemClock.uptimeMillis();
-                long eventTime = SystemClock.uptimeMillis() + 100;
-                float x = current.getWidth() - 10.0f; 
-                float y = current.getHeight() / 2.0f;
+                long eventTime = SystemClock.uptimeMillis() + 50;
+                float x = targetRoot.getWidth() - 20.0f; 
+                float y = targetRoot.getHeight() / 2.0f;
 
                 MotionEvent motionEventDown = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, x, y, 0);
-                MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_UP, x, y, 0);
+                MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime + 50, MotionEvent.ACTION_UP, x, y, 0);
 
-                current.dispatchTouchEvent(motionEventDown);
-                current.dispatchTouchEvent(motionEventUp);
+                targetRoot.dispatchTouchEvent(motionEventDown);
+                targetRoot.dispatchTouchEvent(motionEventUp);
                 
                 motionEventDown.recycle();
                 motionEventUp.recycle();
-                XposedBridge.log("HideAds: [SKEMA 3] Auto-Skip berhasil ditembakkan!");
+                XposedBridge.log("HideAds: [SKEMA 3] Sukses melompati status!");
+            } else {
+                XposedBridge.log("HideAds: [SKEMA 1] Kotak Iklan Beranda dihancurkan!");
+                current = view;
+                for (int i = 0; i < 8; i++) {
+                    if (current.getParent() instanceof View) {
+                        current = (View) current.getParent();
+                        current.setTag("META_AD_LIST_ITEM");
+                        current.setVisibility(View.GONE);
+                        
+                        ViewGroup.LayoutParams params = current.getLayoutParams();
+                        if (params != null) {
+                            params.height = 0;
+                            params.width = 0;
+                            if (params instanceof ViewGroup.MarginLayoutParams) {
+                                ((ViewGroup.MarginLayoutParams) params).setMargins(0, 0, 0, 0);
+                            }
+                            current.setLayoutParams(params);
+                        }
+                    } else {
+                        break;
+                    }
+                }
             }
 
         } catch (Exception e) {

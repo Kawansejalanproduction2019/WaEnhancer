@@ -16,6 +16,8 @@ import de.robv.android.xposed.XposedHelpers;
 
 public class HideAds extends Feature {
 
+    private static long lastSkipTime = 0;
+
     public HideAds(ClassLoader loader, XSharedPreferences preferences) {
         super(loader, preferences);
     }
@@ -24,7 +26,7 @@ public class HideAds extends Feature {
     public void doHook() throws Throwable {
         if (!prefs.getBoolean("hide_ads", true)) return;
 
-        XposedBridge.log("HideAds: Mesin Anti-Iklan Multi-Skala Siap Tempur!");
+        XposedBridge.log("HideAds: Mesin Anti-Iklan Siap Tempur!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
@@ -32,12 +34,12 @@ public class HideAds extends Feature {
                 CharSequence text = (CharSequence) param.args[0];
                 if (text != null) {
                     String s = text.toString().trim();
+                    TextView tv = (TextView) param.thisObject;
+                    
                     if (s.equalsIgnoreCase("Bersponsor") || s.equalsIgnoreCase("Sponsored") || s.equalsIgnoreCase("Promosi")) {
-                        TextView tv = (TextView) param.thisObject;
-                        if ("META_PROCESSED".equals(tv.getTag())) return;
-                        tv.setTag("META_PROCESSED");
-                        
                         executeMultiScheme(tv);
+                    } else {
+                        clearRecycledTags(tv);
                     }
                 }
             }
@@ -66,6 +68,22 @@ public class HideAds extends Feature {
         });
     }
 
+    private void clearRecycledTags(View view) {
+        try {
+            View current = view;
+            for (int i = 0; i < 8; i++) {
+                if (current.getParent() instanceof View) {
+                    current = (View) current.getParent();
+                    if ("META_AD_LIST_ITEM".equals(current.getTag())) {
+                        current.setTag(null); 
+                    }
+                } else {
+                    break;
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
     private void executeMultiScheme(View view) {
         try {
             View current = view;
@@ -85,9 +103,16 @@ public class HideAds extends Feature {
             }
 
             if (isFullScreen && targetRoot != null) {
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastSkipTime < 500) {
+                    return; 
+                }
+                lastSkipTime = currentTime;
+
                 XposedBridge.log("HideAds: [SKEMA 3] Iklan Layar Penuh! Melakukan Auto-Skip...");
                 long downTime = SystemClock.uptimeMillis();
                 long eventTime = SystemClock.uptimeMillis() + 50;
+                
                 float x = targetRoot.getWidth() - 20.0f; 
                 float y = targetRoot.getHeight() / 2.0f;
 
@@ -101,7 +126,6 @@ public class HideAds extends Feature {
                 motionEventUp.recycle();
                 XposedBridge.log("HideAds: [SKEMA 3] Sukses melompati status!");
             } else {
-                XposedBridge.log("HideAds: [SKEMA 1] Kotak Iklan Beranda dihancurkan!");
                 current = view;
                 for (int i = 0; i < 8; i++) {
                     if (current.getParent() instanceof View) {

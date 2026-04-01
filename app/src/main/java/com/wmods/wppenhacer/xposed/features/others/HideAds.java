@@ -26,7 +26,7 @@ public class HideAds extends Feature {
     public void doHook() throws Throwable {
         if (!prefs.getBoolean("hide_ads", true)) return;
 
-        XposedBridge.log("HideAds: Mesin Anti-Iklan Siap Tempur!");
+        XposedBridge.log("HideAds: Mesin Anti-Iklan v4 (Radar Kordinat) Siap Tempur!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
@@ -34,12 +34,11 @@ public class HideAds extends Feature {
                 CharSequence text = (CharSequence) param.args[0];
                 if (text != null) {
                     String s = text.toString().trim();
-                    TextView tv = (TextView) param.thisObject;
-                    
                     if (s.equalsIgnoreCase("Bersponsor") || s.equalsIgnoreCase("Sponsored") || s.equalsIgnoreCase("Promosi")) {
+                        TextView tv = (TextView) param.thisObject;
                         executeMultiScheme(tv);
                     } else {
-                        clearRecycledTags(tv);
+                        clearRecycledTags((TextView) param.thisObject);
                     }
                 }
             }
@@ -103,29 +102,60 @@ public class HideAds extends Feature {
             }
 
             if (isFullScreen && targetRoot != null) {
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastSkipTime < 500) {
-                    return; 
-                }
-                lastSkipTime = currentTime;
-
-                XposedBridge.log("HideAds: [SKEMA 3] Iklan Layar Penuh! Melakukan Auto-Skip...");
-                long downTime = SystemClock.uptimeMillis();
-                long eventTime = SystemClock.uptimeMillis() + 50;
+                final View finalRoot = targetRoot;
                 
-                float x = targetRoot.getWidth() - 20.0f; 
-                float y = targetRoot.getHeight() / 2.0f;
+                if ("TRACKING_AD".equals(finalRoot.getTag())) return;
+                finalRoot.setTag("TRACKING_AD");
 
-                MotionEvent motionEventDown = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, x, y, 0);
-                MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime + 50, MotionEvent.ACTION_UP, x, y, 0);
+                Runnable skipTask = new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            if (!finalRoot.isAttachedToWindow()) {
+                                finalRoot.setTag(null);
+                                return; 
+                            }
 
-                targetRoot.dispatchTouchEvent(motionEventDown);
-                targetRoot.dispatchTouchEvent(motionEventUp);
+                            int[] location = new int[2];
+                            finalRoot.getLocationOnScreen(location);
+                            
+                            if (location[0] >= -50 && location[0] <= 50) {
+                                long currentTime = System.currentTimeMillis();
+                                if (currentTime - lastSkipTime < 800) {
+                                    finalRoot.setTag(null);
+                                    return;
+                                }
+                                lastSkipTime = currentTime;
+
+                                XposedBridge.log("HideAds: [SKEMA 3] Iklan masuk ke tengah layar! TEMBAK!");
+                                long downTime = SystemClock.uptimeMillis();
+                                long eventTime = SystemClock.uptimeMillis() + 50;
+                                float x = finalRoot.getWidth() - 20.0f;
+                                float y = finalRoot.getHeight() / 2.0f;
+
+                                MotionEvent motionEventDown = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, x, y, 0);
+                                MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime + 50, MotionEvent.ACTION_UP, x, y, 0);
+
+                                finalRoot.dispatchTouchEvent(motionEventDown);
+                                finalRoot.dispatchTouchEvent(motionEventUp);
+
+                                motionEventDown.recycle();
+                                motionEventUp.recycle();
+                                
+                                finalRoot.setTag(null); 
+                            } else {
+                                finalRoot.postDelayed(this, 100);
+                            }
+                        } catch (Exception e) {
+                            finalRoot.setTag(null);
+                        }
+                    }
+                };
                 
-                motionEventDown.recycle();
-                motionEventUp.recycle();
-                XposedBridge.log("HideAds: [SKEMA 3] Sukses melompati status!");
+                finalRoot.post(skipTask);
+
             } else {
+                XposedBridge.log("HideAds: [SKEMA 1] Kotak Iklan List dihancurkan!");
                 current = view;
                 for (int i = 0; i < 8; i++) {
                     if (current.getParent() instanceof View) {

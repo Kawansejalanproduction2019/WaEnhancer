@@ -22,7 +22,9 @@ public class HideAds extends Feature {
 
     @Override
     public void doHook() throws Throwable {
-        if (!prefs.getBoolean("hide_ads", false)) return;
+        if (!prefs.getBoolean("hide_ads", true)) return;
+
+        XposedBridge.log("HideAds: Mesin Anti-Iklan Meta berhasil dihidupkan!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
@@ -31,6 +33,7 @@ public class HideAds extends Feature {
                 if (text != null) {
                     String s = text.toString().trim();
                     if (s.equalsIgnoreCase("Bersponsor") || s.equalsIgnoreCase("Sponsored") || s.equalsIgnoreCase("Promosi")) {
+                        XposedBridge.log("HideAds: [TARGET TERKUNCI] Teks iklan terdeteksi -> " + s);
                         TextView tv = (TextView) param.thisObject;
                         tv.setTag("META_AD_DETECTED");
                         executeMultiScheme(tv);
@@ -44,6 +47,9 @@ public class HideAds extends Feature {
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 View view = (View) param.thisObject;
                 if ("META_AD_DETECTED".equals(view.getTag())) {
+                    if ((int) param.args[0] != View.GONE) {
+                        XposedBridge.log("HideAds: [SKEMA 2] Menahan kemunculan iklan, memaksa GONE.");
+                    }
                     param.args[0] = View.GONE;
                 }
             }
@@ -54,6 +60,7 @@ public class HideAds extends Feature {
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 View view = (View) param.thisObject;
                 if ("META_AD_DETECTED".equals(view.getTag())) {
+                    XposedBridge.log("HideAds: [SKEMA 2] Menghancurkan render ukuran iklan menjadi 0x0.");
                     param.args[0] = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.EXACTLY);
                     param.args[1] = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.EXACTLY);
                     param.setResult(null);
@@ -85,6 +92,7 @@ public class HideAds extends Feature {
                             ((ViewGroup.MarginLayoutParams) params).setMargins(0, 0, 0, 0);
                         }
                         current.setLayoutParams(params);
+                        XposedBridge.log("HideAds: [SKEMA 1] Dimensi parent ke-" + i + " berhasil dihancurkan.");
                     }
                 } else {
                     break;
@@ -92,6 +100,7 @@ public class HideAds extends Feature {
             }
 
             if (isFullScreen && current != null) {
+                XposedBridge.log("HideAds: [SKEMA 3] Iklan Layar Penuh terdeteksi! Mengeksekusi Auto-Skip...");
                 long downTime = SystemClock.uptimeMillis();
                 long eventTime = SystemClock.uptimeMillis() + 100;
                 float x = current.getWidth() - 10.0f; 
@@ -105,10 +114,11 @@ public class HideAds extends Feature {
                 
                 motionEventDown.recycle();
                 motionEventUp.recycle();
+                XposedBridge.log("HideAds: [SKEMA 3] Auto-Skip berhasil ditembakkan!");
             }
 
         } catch (Exception e) {
-            XposedBridge.log(e.getMessage());
+            XposedBridge.log("HideAds_CRASH: " + e.getMessage());
         }
     }
 

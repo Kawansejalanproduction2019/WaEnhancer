@@ -1,11 +1,13 @@
 package com.wmods.wppenhacer.xposed.features.customization;
 
+import android.app.Activity;
+import android.content.Context;
+import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
-import android.os.SystemClock;
 
 import com.wmods.wppenhacer.xposed.core.Feature;
 
@@ -26,16 +28,17 @@ public class HideAds extends Feature {
     public void doHook() throws Throwable {
         if (!prefs.getBoolean("hide_ads", true)) return;
 
-        XposedBridge.log("HideAds: Mesin Anti-Iklan v4 (Radar Kordinat) Siap Tempur!");
+        XposedBridge.log("HideAds: Mesin Anti-Iklan v5 (Radar Presisi) Siap Tempur!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 CharSequence text = (CharSequence) param.args[0];
                 if (text != null) {
-                    String s = text.toString().trim();
-                    if (s.equalsIgnoreCase("Bersponsor") || s.equalsIgnoreCase("Sponsored") || s.equalsIgnoreCase("Promosi")) {
+                    String s = text.toString().toLowerCase();
+                    if (s.contains("bersponsor") || s.contains("sponsored") || s.contains("promosi")) {
                         TextView tv = (TextView) param.thisObject;
+                        XposedBridge.log("HideAds: [TARGET TERKUNCI] Iklan ditemukan -> " + s);
                         executeMultiScheme(tv);
                     } else {
                         clearRecycledTags((TextView) param.thisObject);
@@ -74,7 +77,7 @@ public class HideAds extends Feature {
                 if (current.getParent() instanceof View) {
                     current = (View) current.getParent();
                     if ("META_AD_LIST_ITEM".equals(current.getTag())) {
-                        current.setTag(null); 
+                        current.setTag(null);
                     }
                 } else {
                     break;
@@ -113,7 +116,7 @@ public class HideAds extends Feature {
                         try {
                             if (!finalRoot.isAttachedToWindow()) {
                                 finalRoot.setTag(null);
-                                return; 
+                                return;
                             }
 
                             int[] location = new int[2];
@@ -127,22 +130,29 @@ public class HideAds extends Feature {
                                 }
                                 lastSkipTime = currentTime;
 
-                                XposedBridge.log("HideAds: [SKEMA 3] Iklan masuk ke tengah layar! TEMBAK!");
+                                XposedBridge.log("HideAds: [SKEMA 3] Iklan di tengah layar! Tembak Auto-Skip Global!");
                                 long downTime = SystemClock.uptimeMillis();
                                 long eventTime = SystemClock.uptimeMillis() + 50;
-                                float x = finalRoot.getWidth() - 20.0f;
-                                float y = finalRoot.getHeight() / 2.0f;
+                                
+                                View clickTarget = finalRoot;
+                                Context context = finalRoot.getContext();
+                                if (context instanceof Activity) {
+                                    clickTarget = ((Activity) context).getWindow().getDecorView();
+                                }
+
+                                float x = clickTarget.getWidth() - 20.0f;
+                                float y = clickTarget.getHeight() / 2.0f;
 
                                 MotionEvent motionEventDown = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, x, y, 0);
                                 MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime + 50, MotionEvent.ACTION_UP, x, y, 0);
 
-                                finalRoot.dispatchTouchEvent(motionEventDown);
-                                finalRoot.dispatchTouchEvent(motionEventUp);
+                                clickTarget.dispatchTouchEvent(motionEventDown);
+                                clickTarget.dispatchTouchEvent(motionEventUp);
 
                                 motionEventDown.recycle();
                                 motionEventUp.recycle();
                                 
-                                finalRoot.setTag(null); 
+                                finalRoot.setTag(null);
                             } else {
                                 finalRoot.postDelayed(this, 100);
                             }
@@ -155,7 +165,7 @@ public class HideAds extends Feature {
                 finalRoot.post(skipTask);
 
             } else {
-                XposedBridge.log("HideAds: [SKEMA 1] Kotak Iklan List dihancurkan!");
+                XposedBridge.log("HideAds: [SKEMA 1] Kotak Iklan dihancurkan!");
                 current = view;
                 for (int i = 0; i < 8; i++) {
                     if (current.getParent() instanceof View) {

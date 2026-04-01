@@ -33,6 +33,7 @@ import com.wmods.wppenhacer.xposed.features.customization.CustomTime;
 import com.wmods.wppenhacer.xposed.features.customization.CustomToolbar;
 import com.wmods.wppenhacer.xposed.features.customization.CustomView;
 import com.wmods.wppenhacer.xposed.features.customization.FilterGroups;
+import com.wmods.wppenhacer.xposed.features.customization.HideAds;
 import com.wmods.wppenhacer.xposed.features.customization.HideSeenView;
 import com.wmods.wppenhacer.xposed.features.customization.HideTabs;
 import com.wmods.wppenhacer.xposed.features.customization.IGStatus;
@@ -134,7 +135,6 @@ public class FeatureLoader {
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                         mApp = (Application) param.args[0];
 
-                        // Inject Booloader Spoofer
                         if (pref.getBoolean("bootloader_spoofer", false)) {
                             HookBL.hook(loader, pref);
                             XposedBridge.log("Bootloader Spoofer is Injected");
@@ -171,8 +171,7 @@ public class FeatureLoader {
                             initComponents(loader, pref);
                             plugins(loader, pref, packageInfo.versionName);
                             sendEnabledBroadcast(mApp);
-                            // XposedHelpers.setStaticIntField(XposedHelpers.findClass("com.whatsapp.infra.logging.Log",
-                            // loader), "level", 5);
+                            
                             var timemillis2 = System.currentTimeMillis() - timemillis;
                             XposedBridge.log("Loaded Hooks in " + timemillis2 + "ms");
                         } catch (Throwable e) {
@@ -250,17 +249,14 @@ public class FeatureLoader {
                 checkUpdate(activity);
             }
 
-            // Check for WAE Update
-            // noinspection ConstantValue
             if (App.isOriginalPackage() && pref.getBoolean("update_check", true)) {
                 if (activity.getClass().getSimpleName().equals("HomeActivity")
                         && state == WppCore.ActivityChangeState.ChangeType.RESUMED) {
-                    // Delay to ensure smooth activity transition
                     XposedBridge.log("[WAE] Scheduling update check in 2 seconds...");
                     activity.getWindow().getDecorView().postDelayed(() -> {
                         XposedBridge.log("[WAE] Launching UpdateChecker now");
                         CompletableFuture.runAsync(new UpdateChecker(activity));
-                    }, 2000); // 2 second delay
+                    }, 2000); 
                 }
             }
         });
@@ -283,7 +279,6 @@ public class FeatureLoader {
     }
 
     private static void registerReceivers() {
-        // Reboot receiver
         BroadcastReceiver restartReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -299,7 +294,6 @@ public class FeatureLoader {
         ContextCompat.registerReceiver(mApp, restartReceiver,
                 new IntentFilter(BuildConfig.APPLICATION_ID + ".WHATSAPP.RESTART"), ContextCompat.RECEIVER_EXPORTED);
 
-        /// Wpp receiver
         BroadcastReceiver wppReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -309,7 +303,6 @@ public class FeatureLoader {
         ContextCompat.registerReceiver(mApp, wppReceiver, new IntentFilter(BuildConfig.APPLICATION_ID + ".CHECK_WPP"),
                 ContextCompat.RECEIVER_EXPORTED);
 
-        // Dialog receiver restart
         BroadcastReceiver restartManualReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -337,6 +330,7 @@ public class FeatureLoader {
 
         var classes = new Class<?>[] {
                 DebugFeature.class,
+                HideAds.class,
                 ContactItemListener.class,
                 ConversationItemListener.class,
                 MenuStatusListener.class,

@@ -1,6 +1,5 @@
 package com.wmods.wppenhacer.xposed.features.customization;
 
-import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -10,7 +9,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 
 import com.wmods.wppenhacer.xposed.core.Feature;
-import com.wmods.wppenhacer.xposed.core.WppCore;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XSharedPreferences;
@@ -30,7 +28,7 @@ public class HideAds extends Feature {
     public void doHook() throws Throwable {
         if (!prefs.getBoolean("hide_ads", true)) return;
 
-        XposedBridge.log("HideAds: Mesin Turbo Auto-Skip Siap Tempur!");
+        XposedBridge.log("HideAds: Mesin Sniper Presisi Siap Tempur!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
@@ -43,7 +41,7 @@ public class HideAds extends Feature {
                     if (s.contains("bersponsor") || s.contains("sponsored") || s.contains("promosi")) {
                         if ("LOCKED".equals(tv.getTag())) return;
                         tv.setTag("LOCKED");
-                        startTurboRadar(tv);
+                        startRadar(tv);
                     } else {
                         tv.setTag(null);
                     }
@@ -52,7 +50,7 @@ public class HideAds extends Feature {
         });
     }
 
-    private void startTurboRadar(final TextView tv) {
+    private void startRadar(final TextView tv) {
         Runnable radarTask = new Runnable() {
             private boolean isExecuted = false;
 
@@ -60,6 +58,7 @@ public class HideAds extends Feature {
             public void run() {
                 try {
                     if (isExecuted || !"LOCKED".equals(tv.getTag()) || !tv.isAttachedToWindow()) {
+                        tv.setTag(null);
                         return;
                     }
 
@@ -92,20 +91,23 @@ public class HideAds extends Feature {
                     int[] loc = new int[2];
                     pageRoot.getLocationOnScreen(loc);
 
-                    if (loc[0] >= -30 && loc[0] <= 30) {
+                    if (loc[0] >= -50 && loc[0] <= 50) {
                         long now = System.currentTimeMillis();
-                        if (now - lastSkipTime > 500) {
-                            lastSkipTime = now;
-                            isExecuted = true;
-                            tv.setTag(null);
-                            
-                            XposedBridge.log("HideAds: [TURBO] Iklan Terdeteksi di Tengah. Eksekusi!");
-                            performInstantSkip();
+                        if (now - lastSkipTime < 800) {
+                            mainHandler.postDelayed(this, 100);
                             return;
                         }
+                        
+                        lastSkipTime = now;
+                        isExecuted = true;
+                        XposedBridge.log("HideAds: [TURBO] Iklan di tengah. TEMBAK SEKARANG!");
+                        performInstantSkip(pageRoot);
+                        
+                        tv.setTag(null);
+                        return;
                     }
 
-                    mainHandler.postDelayed(this, 16);
+                    mainHandler.postDelayed(this, 10);
                 } catch (Exception e) {
                     tv.setTag(null);
                 }
@@ -114,25 +116,22 @@ public class HideAds extends Feature {
         mainHandler.post(radarTask);
     }
 
-    private void performInstantSkip() {
+    private void performInstantSkip(View finalRoot) {
         try {
-            Activity activity = WppCore.getCurrentActivity();
-            if (activity != null) {
-                View decorView = activity.getWindow().getDecorView();
-                long downTime = SystemClock.uptimeMillis();
-                
-                float x = decorView.getWidth() - 5.0f;
-                float y = decorView.getHeight() / 2.0f;
+            long downTime = SystemClock.uptimeMillis();
+            long eventTime = SystemClock.uptimeMillis() + 50;
+            
+            float x = finalRoot.getWidth() - 20.0f;
+            float y = finalRoot.getHeight() / 2.0f;
 
-                MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, x, y, 0);
-                MotionEvent up = MotionEvent.obtain(downTime, downTime + 10, MotionEvent.ACTION_UP, x, y, 0);
+            MotionEvent motionEventDown = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, x, y, 0);
+            MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_UP, x, y, 0);
 
-                decorView.dispatchTouchEvent(down);
-                decorView.dispatchTouchEvent(up);
+            finalRoot.dispatchTouchEvent(motionEventDown);
+            finalRoot.dispatchTouchEvent(motionEventUp);
 
-                down.recycle();
-                up.recycle();
-            }
+            motionEventDown.recycle();
+            motionEventUp.recycle();
         } catch (Exception ignored) {}
     }
 

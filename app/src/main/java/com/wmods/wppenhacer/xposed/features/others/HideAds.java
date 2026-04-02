@@ -30,7 +30,7 @@ public class HideAds extends Feature {
     public void doHook() throws Throwable {
         if (!prefs.getBoolean("hide_ads", true)) return;
 
-        XposedBridge.log("HideAds: Mesin Auto-Skip Radar Murni Siap Tempur!");
+        XposedBridge.log("HideAds: Mesin Turbo Auto-Skip Siap Tempur!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
@@ -41,9 +41,9 @@ public class HideAds extends Feature {
                     TextView tv = (TextView) param.thisObject;
 
                     if (s.contains("bersponsor") || s.contains("sponsored") || s.contains("promosi")) {
-                        if ("TRACKING".equals(tv.getTag())) return;
-                        tv.setTag("TRACKING");
-                        startRadar(tv);
+                        if ("LOCKED".equals(tv.getTag())) return;
+                        tv.setTag("LOCKED");
+                        startTurboRadar(tv);
                     } else {
                         tv.setTag(null);
                     }
@@ -52,12 +52,26 @@ public class HideAds extends Feature {
         });
     }
 
-    private void startRadar(final TextView tv) {
+    private void startTurboRadar(final TextView tv) {
         Runnable radarTask = new Runnable() {
+            private boolean isExecuted = false;
+
             @Override
             public void run() {
                 try {
-                    if (!"TRACKING".equals(tv.getTag()) || !tv.isAttachedToWindow()) {
+                    if (isExecuted || !"LOCKED".equals(tv.getTag()) || !tv.isAttachedToWindow()) {
+                        return;
+                    }
+
+                    CharSequence currentText = tv.getText();
+                    if (currentText == null) {
+                        tv.setTag(null);
+                        return;
+                    }
+
+                    String check = currentText.toString().toLowerCase();
+                    if (!check.contains("bersponsor") && !check.contains("sponsored") && !check.contains("promosi")) {
+                        tv.setTag(null);
                         return;
                     }
 
@@ -65,8 +79,8 @@ public class HideAds extends Feature {
                     for (int i = 0; i < 10; i++) {
                         if (pageRoot.getParent() instanceof View) {
                             View parent = (View) pageRoot.getParent();
-                            String parentName = parent.getClass().getName().toLowerCase();
-                            if (parentName.contains("recyclerview") || parentName.contains("viewpager")) {
+                            String name = parent.getClass().getName().toLowerCase();
+                            if (name.contains("recyclerview") || name.contains("viewpager")) {
                                 break;
                             }
                             pageRoot = parent;
@@ -78,16 +92,20 @@ public class HideAds extends Feature {
                     int[] loc = new int[2];
                     pageRoot.getLocationOnScreen(loc);
 
-                    if (loc[0] >= -50 && loc[0] <= 50) {
-                        long currentTime = System.currentTimeMillis();
-                        if (currentTime - lastSkipTime > 800) {
-                            lastSkipTime = currentTime;
-                            XposedBridge.log("HideAds: [TARGET TERKUNCI] Iklan di depan mata. Tembak Skip!");
-                            performSkip();
+                    if (loc[0] >= -30 && loc[0] <= 30) {
+                        long now = System.currentTimeMillis();
+                        if (now - lastSkipTime > 500) {
+                            lastSkipTime = now;
+                            isExecuted = true;
+                            tv.setTag(null);
+                            
+                            XposedBridge.log("HideAds: [TURBO] Iklan Terdeteksi di Tengah. Eksekusi!");
+                            performInstantSkip();
+                            return;
                         }
                     }
 
-                    mainHandler.postDelayed(this, 100);
+                    mainHandler.postDelayed(this, 16);
                 } catch (Exception e) {
                     tv.setTag(null);
                 }
@@ -96,25 +114,24 @@ public class HideAds extends Feature {
         mainHandler.post(radarTask);
     }
 
-    private void performSkip() {
+    private void performInstantSkip() {
         try {
             Activity activity = WppCore.getCurrentActivity();
             if (activity != null) {
                 View decorView = activity.getWindow().getDecorView();
                 long downTime = SystemClock.uptimeMillis();
-                long eventTime = SystemClock.uptimeMillis() + 20;
-
-                float x = decorView.getWidth() - 10.0f;
+                
+                float x = decorView.getWidth() - 5.0f;
                 float y = decorView.getHeight() / 2.0f;
 
-                MotionEvent motionEventDown = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, x, y, 0);
-                MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime + 20, MotionEvent.ACTION_UP, x, y, 0);
+                MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, x, y, 0);
+                MotionEvent up = MotionEvent.obtain(downTime, downTime + 10, MotionEvent.ACTION_UP, x, y, 0);
 
-                decorView.dispatchTouchEvent(motionEventDown);
-                decorView.dispatchTouchEvent(motionEventUp);
+                decorView.dispatchTouchEvent(down);
+                decorView.dispatchTouchEvent(up);
 
-                motionEventDown.recycle();
-                motionEventUp.recycle();
+                down.recycle();
+                up.recycle();
             }
         } catch (Exception ignored) {}
     }

@@ -6,7 +6,6 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 
@@ -21,6 +20,7 @@ import de.robv.android.xposed.XposedHelpers;
 public class HideAds extends Feature {
 
     private static long lastSkipTime = 0;
+    private static final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public HideAds(ClassLoader loader, XSharedPreferences preferences) {
         super(loader, preferences);
@@ -29,6 +29,8 @@ public class HideAds extends Feature {
     @Override
     public void doHook() throws Throwable {
         if (!prefs.getBoolean("hide_ads", true)) return;
+
+        XposedBridge.log("HideAds: Mesin Auto-Skip Radar Murni Siap Tempur!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
@@ -39,161 +41,80 @@ public class HideAds extends Feature {
                     TextView tv = (TextView) param.thisObject;
 
                     if (s.contains("bersponsor") || s.contains("sponsored") || s.contains("promosi")) {
-                        if ("LOCKED_TARGET".equals(tv.getTag())) return;
-                        tv.setTag("LOCKED_TARGET");
-                        executeMultiScheme(tv);
+                        if ("TRACKING".equals(tv.getTag())) return;
+                        tv.setTag("TRACKING");
+                        startRadar(tv);
                     } else {
                         tv.setTag(null);
-                        clearRecycledTags(tv);
                     }
-                }
-            }
-        });
-
-        XposedHelpers.findAndHookMethod(View.class, "setVisibility", int.class, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                View view = (View) param.thisObject;
-                if ("META_AD_LIST_ITEM".equals(view.getTag())) {
-                    param.args[0] = View.GONE;
-                }
-            }
-        });
-
-        XposedHelpers.findAndHookMethod(View.class, "onMeasure", int.class, int.class, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                View view = (View) param.thisObject;
-                if ("META_AD_LIST_ITEM".equals(view.getTag())) {
-                    param.args[0] = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.EXACTLY);
-                    param.args[1] = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.EXACTLY);
-                    param.setResult(null);
                 }
             }
         });
     }
 
-    private void clearRecycledTags(View view) {
-        try {
-            View current = view;
-            for (int i = 0; i < 8; i++) {
-                if (current.getParent() instanceof View) {
-                    current = (View) current.getParent();
-                    if ("META_AD_LIST_ITEM".equals(current.getTag())) {
-                        current.setTag(null);
+    private void startRadar(final TextView tv) {
+        Runnable radarTask = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (!"TRACKING".equals(tv.getTag()) || !tv.isAttachedToWindow()) {
+                        return;
                     }
-                } else {
-                    break;
+
+                    View pageRoot = tv;
+                    for (int i = 0; i < 10; i++) {
+                        if (pageRoot.getParent() instanceof View) {
+                            View parent = (View) pageRoot.getParent();
+                            String parentName = parent.getClass().getName().toLowerCase();
+                            if (parentName.contains("recyclerview") || parentName.contains("viewpager")) {
+                                break;
+                            }
+                            pageRoot = parent;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    int[] loc = new int[2];
+                    pageRoot.getLocationOnScreen(loc);
+
+                    if (loc[0] >= -50 && loc[0] <= 50) {
+                        long currentTime = System.currentTimeMillis();
+                        if (currentTime - lastSkipTime > 800) {
+                            lastSkipTime = currentTime;
+                            XposedBridge.log("HideAds: [TARGET TERKUNCI] Iklan di depan mata. Tembak Skip!");
+                            performSkip();
+                        }
+                    }
+
+                    mainHandler.postDelayed(this, 100);
+                } catch (Exception e) {
+                    tv.setTag(null);
                 }
             }
-        } catch (Exception ignored) {}
+        };
+        mainHandler.post(radarTask);
     }
 
-    private void executeMultiScheme(final TextView tv) {
+    private void performSkip() {
         try {
-            View current = tv;
-            boolean isFullScreen = false;
-            View targetRoot = null;
+            Activity activity = WppCore.getCurrentActivity();
+            if (activity != null) {
+                View decorView = activity.getWindow().getDecorView();
+                long downTime = SystemClock.uptimeMillis();
+                long eventTime = SystemClock.uptimeMillis() + 20;
 
-            for (int i = 0; i < 8; i++) {
-                if (current.getParent() instanceof View) {
-                    current = (View) current.getParent();
-                    if (current.getHeight() > 1000) {
-                        isFullScreen = true;
-                        targetRoot = current;
-                    }
-                } else {
-                    break;
-                }
-            }
+                float x = decorView.getWidth() - 10.0f;
+                float y = decorView.getHeight() / 2.0f;
 
-            if (isFullScreen && targetRoot != null) {
-                final View finalRoot = targetRoot;
-                final Handler mainHandler = new Handler(Looper.getMainLooper());
+                MotionEvent motionEventDown = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, x, y, 0);
+                MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime + 20, MotionEvent.ACTION_UP, x, y, 0);
 
-                Runnable skipTask = new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            CharSequence currentText = tv.getText();
-                            if (currentText == null) {
-                                tv.setTag(null);
-                                return;
-                            }
-                            
-                            String checkString = currentText.toString().toLowerCase();
-                            if (!checkString.contains("bersponsor") && !checkString.contains("sponsored") && !checkString.contains("promosi")) {
-                                tv.setTag(null);
-                                return;
-                            }
+                decorView.dispatchTouchEvent(motionEventDown);
+                decorView.dispatchTouchEvent(motionEventUp);
 
-                            int[] location = new int[2];
-                            finalRoot.getLocationOnScreen(location);
-
-                            if (location[0] >= -50 && location[0] <= 50) {
-                                long currentTime = System.currentTimeMillis();
-                                if (currentTime - lastSkipTime < 800) {
-                                    mainHandler.postDelayed(this, 100);
-                                    return;
-                                }
-                                lastSkipTime = currentTime;
-
-                                long downTime = SystemClock.uptimeMillis();
-                                long eventTime = SystemClock.uptimeMillis() + 20;
-                                
-                                View clickTarget = finalRoot;
-                                try {
-                                    Activity activity = WppCore.getCurrentActivity();
-                                    if (activity != null) {
-                                        clickTarget = activity.getWindow().getDecorView();
-                                    }
-                                } catch (Exception ignored) {}
-
-                                float x = clickTarget.getWidth() - 20.0f;
-                                float y = clickTarget.getHeight() / 2.0f;
-
-                                MotionEvent motionEventDown = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, x, y, 0);
-                                MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime + 20, MotionEvent.ACTION_UP, x, y, 0);
-
-                                clickTarget.dispatchTouchEvent(motionEventDown);
-                                clickTarget.dispatchTouchEvent(motionEventUp);
-
-                                motionEventDown.recycle();
-                                motionEventUp.recycle();
-
-                                tv.setTag(null);
-                            } else {
-                                mainHandler.postDelayed(this, 100);
-                            }
-                        } catch (Exception e) {
-                            tv.setTag(null);
-                        }
-                    }
-                };
-
-                mainHandler.post(skipTask);
-
-            } else {
-                current = tv;
-                for (int i = 0; i < 8; i++) {
-                    if (current.getParent() instanceof View) {
-                        current = (View) current.getParent();
-                        current.setTag("META_AD_LIST_ITEM");
-                        current.setVisibility(View.GONE);
-
-                        ViewGroup.LayoutParams params = current.getLayoutParams();
-                        if (params != null) {
-                            params.height = 0;
-                            params.width = 0;
-                            if (params instanceof ViewGroup.MarginLayoutParams) {
-                                ((ViewGroup.MarginLayoutParams) params).setMargins(0, 0, 0, 0);
-                            }
-                            current.setLayoutParams(params);
-                        }
-                    } else {
-                        break;
-                    }
-                }
+                motionEventDown.recycle();
+                motionEventUp.recycle();
             }
         } catch (Exception ignored) {}
     }

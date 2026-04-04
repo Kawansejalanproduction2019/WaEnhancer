@@ -27,7 +27,7 @@ public class HideAds extends Feature {
     public void doHook() throws Throwable {
         if (!prefs.getBoolean("hide_ads", true)) return;
 
-        XposedBridge.log("HideAds: Mesin Auto-Skip Agresif & Presisi Siap!");
+        XposedBridge.log("HideAds: Mesin Auto-Swipe Kiri Siap Tempur!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
@@ -43,7 +43,7 @@ public class HideAds extends Feature {
                             return;
                         }
                         tv.setTag("RADAR_ON");
-                        startAggressiveRadar(tv);
+                        startSwipeRadar(tv);
                     } else {
                         tv.setTag(null);
                     }
@@ -52,7 +52,7 @@ public class HideAds extends Feature {
         });
     }
 
-    private void startAggressiveRadar(final TextView tv) {
+    private void startSwipeRadar(final TextView tv) {
         Runnable radarTask = new Runnable() {
             @Override
             public void run() {
@@ -74,27 +74,25 @@ public class HideAds extends Feature {
                     }
 
                     View pageRoot = tv;
-                    for (int i = 0; i < 10; i++) {
-                        if (pageRoot.getParent() instanceof View) {
-                            View parent = (View) pageRoot.getParent();
-                            String name = parent.getClass().getName().toLowerCase();
-                            if (name.contains("recyclerview") || name.contains("viewpager")) {
-                                break;
-                            }
+                    int screenWidth = tv.getResources().getDisplayMetrics().widthPixels;
+                    
+                    while (pageRoot.getParent() instanceof View) {
+                        View parent = (View) pageRoot.getParent();
+                        if (parent.getWidth() >= screenWidth * 0.9f) {
                             pageRoot = parent;
-                        } else {
                             break;
                         }
+                        pageRoot = parent;
                     }
 
                     int[] loc = new int[2];
                     pageRoot.getLocationOnScreen(loc);
 
-                    if (loc[0] >= -10 && loc[0] <= 10) {
+                    if (loc[0] >= -30 && loc[0] <= 30) {
                         tv.setTag("SKIPPED");
                         
-                        XposedBridge.log("HideAds: Iklan Tepat di Layar! Tembak Skip Instan!");
-                        performPreciseClick(pageRoot);
+                        XposedBridge.log("HideAds: Iklan Tepat di Tengah. Eksekusi SWIPE KIRI!");
+                        simulateSwipeLeft(tv.getRootView());
                         return;
                     }
 
@@ -107,22 +105,33 @@ public class HideAds extends Feature {
         mainHandler.post(radarTask);
     }
 
-    private void performPreciseClick(View target) {
+    private void simulateSwipeLeft(View root) {
         try {
             long downTime = SystemClock.uptimeMillis();
-            long eventTime = SystemClock.uptimeMillis() + 10;
+            long eventTime = downTime;
             
-            float x = target.getWidth() - 20.0f;
-            float y = target.getHeight() / 2.0f;
+            float startX = root.getWidth() * 0.8f;
+            float endX = root.getWidth() * 0.2f;
+            float y = root.getHeight() / 2.0f;
 
-            MotionEvent motionEventDown = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, x, y, 0);
-            MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_UP, x, y, 0);
+            MotionEvent down = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, startX, y, 0);
+            root.dispatchTouchEvent(down);
+            down.recycle();
 
-            target.dispatchTouchEvent(motionEventDown);
-            target.dispatchTouchEvent(motionEventUp);
+            int steps = 15;
+            for (int i = 1; i <= steps; i++) {
+                eventTime += 10;
+                float currentX = startX - ((startX - endX) * (i / (float) steps));
+                MotionEvent move = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_MOVE, currentX, y, 0);
+                root.dispatchTouchEvent(move);
+                move.recycle();
+            }
 
-            motionEventDown.recycle();
-            motionEventUp.recycle();
+            eventTime += 10;
+            MotionEvent up = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_UP, endX, y, 0);
+            root.dispatchTouchEvent(up);
+            up.recycle();
+            
         } catch (Exception ignored) {}
     }
 

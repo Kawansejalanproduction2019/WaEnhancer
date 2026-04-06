@@ -1,5 +1,6 @@
 package com.wmods.wppenhacer.xposed.features.customization;
 
+import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -9,6 +10,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 
 import com.wmods.wppenhacer.xposed.core.Feature;
+import com.wmods.wppenhacer.xposed.core.WppCore;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XSharedPreferences;
@@ -17,6 +19,7 @@ import de.robv.android.xposed.XposedHelpers;
 
 public class HideAds extends Feature {
 
+    private static long lastSkipTime = 0;
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public HideAds(ClassLoader loader, XSharedPreferences preferences) {
@@ -27,7 +30,7 @@ public class HideAds extends Feature {
     public void doHook() throws Throwable {
         if (!prefs.getBoolean("hide_ads", true)) return;
 
-        XposedBridge.log("HideAds: Mesin Auto-Swipe Kiri Siap Tempur!");
+        XposedBridge.log("HideAds: Mesin Auto-Skip Radar Murni Siap Tempur!");
 
         XposedHelpers.findAndHookMethod(TextView.class, "setText", CharSequence.class, TextView.BufferType.class, new XC_MethodHook() {
             @Override
@@ -38,12 +41,9 @@ public class HideAds extends Feature {
                     TextView tv = (TextView) param.thisObject;
 
                     if (s.contains("bersponsor") || s.contains("sponsored") || s.contains("promosi")) {
-                        Object currentTag = tv.getTag();
-                        if ("RADAR_ON".equals(currentTag) || "SKIPPED".equals(currentTag)) {
-                            return;
-                        }
-                        tv.setTag("RADAR_ON");
-                        startSwipeRadar(tv);
+                        if ("TRACKING".equals(tv.getTag())) return;
+                        tv.setTag("TRACKING");
+                        startRadar(tv);
                     } else {
                         tv.setTag(null);
                     }
@@ -52,51 +52,42 @@ public class HideAds extends Feature {
         });
     }
 
-    private void startSwipeRadar(final TextView tv) {
+    private void startRadar(final TextView tv) {
         Runnable radarTask = new Runnable() {
             @Override
             public void run() {
                 try {
-                    if (!"RADAR_ON".equals(tv.getTag()) || !tv.isAttachedToWindow()) {
-                        return;
-                    }
-
-                    CharSequence currentText = tv.getText();
-                    if (currentText == null) {
-                        tv.setTag(null);
-                        return;
-                    }
-
-                    String check = currentText.toString().toLowerCase();
-                    if (!check.contains("bersponsor") && !check.contains("sponsored") && !check.contains("promosi")) {
-                        tv.setTag(null);
+                    if (!"TRACKING".equals(tv.getTag()) || !tv.isAttachedToWindow()) {
                         return;
                     }
 
                     View pageRoot = tv;
-                    int screenWidth = tv.getResources().getDisplayMetrics().widthPixels;
-                    
-                    while (pageRoot.getParent() instanceof View) {
-                        View parent = (View) pageRoot.getParent();
-                        if (parent.getWidth() >= screenWidth * 0.9f) {
+                    for (int i = 0; i < 10; i++) {
+                        if (pageRoot.getParent() instanceof View) {
+                            View parent = (View) pageRoot.getParent();
+                            String parentName = parent.getClass().getName().toLowerCase();
+                            if (parentName.contains("recyclerview") || parentName.contains("viewpager")) {
+                                break;
+                            }
                             pageRoot = parent;
+                        } else {
                             break;
                         }
-                        pageRoot = parent;
                     }
 
                     int[] loc = new int[2];
                     pageRoot.getLocationOnScreen(loc);
 
-                    if (loc[0] >= -30 && loc[0] <= 30) {
-                        tv.setTag("SKIPPED");
-                        
-                        XposedBridge.log("HideAds: Iklan Tepat di Tengah. Eksekusi SWIPE KIRI!");
-                        simulateSwipeLeft(tv.getRootView());
-                        return;
+                    if (loc[0] >= -50 && loc[0] <= 50) {
+                        long currentTime = System.currentTimeMillis();
+                        if (currentTime - lastSkipTime > 800) {
+                            lastSkipTime = currentTime;
+                            XposedBridge.log("HideAds: [TARGET TERKUNCI] Iklan di depan mata. Tembak Skip!");
+                            performSkip();
+                        }
                     }
 
-                    mainHandler.postDelayed(this, 16);
+                    mainHandler.postDelayed(this, 100);
                 } catch (Exception e) {
                     tv.setTag(null);
                 }
@@ -105,33 +96,26 @@ public class HideAds extends Feature {
         mainHandler.post(radarTask);
     }
 
-    private void simulateSwipeLeft(View root) {
+    private void performSkip() {
         try {
-            long downTime = SystemClock.uptimeMillis();
-            long eventTime = downTime;
-            
-            float startX = root.getWidth() * 0.8f;
-            float endX = root.getWidth() * 0.2f;
-            float y = root.getHeight() / 2.0f;
+            Activity activity = WppCore.getCurrentActivity();
+            if (activity != null) {
+                View decorView = activity.getWindow().getDecorView();
+                long downTime = SystemClock.uptimeMillis();
+                long eventTime = SystemClock.uptimeMillis() + 20;
 
-            MotionEvent down = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, startX, y, 0);
-            root.dispatchTouchEvent(down);
-            down.recycle();
+                float x = decorView.getWidth() - 10.0f;
+                float y = decorView.getHeight() / 2.0f;
 
-            int steps = 15;
-            for (int i = 1; i <= steps; i++) {
-                eventTime += 10;
-                float currentX = startX - ((startX - endX) * (i / (float) steps));
-                MotionEvent move = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_MOVE, currentX, y, 0);
-                root.dispatchTouchEvent(move);
-                move.recycle();
+                MotionEvent motionEventDown = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_DOWN, x, y, 0);
+                MotionEvent motionEventUp = MotionEvent.obtain(downTime, eventTime + 20, MotionEvent.ACTION_UP, x, y, 0);
+
+                decorView.dispatchTouchEvent(motionEventDown);
+                decorView.dispatchTouchEvent(motionEventUp);
+
+                motionEventDown.recycle();
+                motionEventUp.recycle();
             }
-
-            eventTime += 10;
-            MotionEvent up = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_UP, endX, y, 0);
-            root.dispatchTouchEvent(up);
-            up.recycle();
-            
         } catch (Exception ignored) {}
     }
 
